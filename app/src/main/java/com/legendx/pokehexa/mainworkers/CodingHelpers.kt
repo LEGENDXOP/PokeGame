@@ -82,7 +82,7 @@ object PokeHelpers{
         return newHp.coerceAtLeast(0)
     }
 
-    fun attemptCatch(
+    fun tryCatch(
         enemyPokemon: UserPokemon,
         currentHP: Int,
         pokeball: UserPokeBalls

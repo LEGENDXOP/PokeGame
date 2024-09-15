@@ -22,7 +22,7 @@ data class UserPokemon(
     val types: List<String>,
     val height: Int,
     val weight: Int,
-    val baseCatchRate: Int? = null
+    var baseCatchRate: Int? = null
 )
 
 data class UserPokeBalls(

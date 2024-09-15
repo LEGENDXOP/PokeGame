@@ -3,7 +3,9 @@ package com.legendx.pokehexa.database
 import androidx.room.TypeConverter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.legendx.pokehexa.mainworkers.Move
 import com.legendx.pokehexa.mainworkers.PokeBallsCategory
+import com.legendx.pokehexa.mainworkers.Stats
 import com.legendx.pokehexa.mainworkers.UserPokeBalls
 import com.legendx.pokehexa.mainworkers.UserPokemon
 
@@ -61,4 +63,30 @@ class Converters {
     fun toPokeBallsCategory(category: String): PokeBallsCategory {
         return PokeBallsCategory.valueOf(category)
     }
+
+    // Convert List<Move> to String
+    @TypeConverter
+    fun fromMoveList(moves: List<Move>): String {
+        return gson.toJson(moves)
+    }
+
+    // Convert String to List<Move>
+    @TypeConverter
+    fun toMoveList(data: String): List<Move> {
+        val listType = object : TypeToken<List<Move>>() {}.type
+        return gson.fromJson(data, listType)
+    }
+
+    // Convert Stats to String
+    @TypeConverter
+    fun fromStats(stats: Stats): String {
+        return gson.toJson(stats)
+    }
+
+    // Convert String to Stats
+    @TypeConverter
+    fun toStats(data: String): Stats {
+        return gson.fromJson(data, Stats::class.java)
+    }
+
 }
