@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">PokeHexa Game</string>
+    <string name="title_activity_files_setup">FilesSetup</string>
+    <string name="title_activity_poke_hexa">PokeHexa</string>
+    <string name="title_activity_select_data">SelectData</string>
+    <string name="title_activity_fight_mode">FightMode</string>
+</resources>
