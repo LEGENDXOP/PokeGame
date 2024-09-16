@@ -9,7 +9,7 @@ import kotlinx.coroutines.launch
 class MainApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        CoroutineScope(Dispatchers.IO).launch{
+        CoroutineScope(Dispatchers.IO).launch {
             DataCache.loadDataFromJson(applicationContext)
             println("data loaded")
         }

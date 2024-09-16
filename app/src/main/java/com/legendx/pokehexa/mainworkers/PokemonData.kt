@@ -41,3 +41,15 @@ data class Moves(
     val effect: String,
     val target: String
 )
+
+data class PokemonSpecies(
+    val name: String,
+    val id: Int,
+    @SerializedName("capture_rate") val captureRate: Int,
+    val habitat: String,
+    @SerializedName("is_legendary") val isLegendary: Boolean,
+    @SerializedName("is_mythical") val isMythical: Boolean,
+    val color: String,
+    val shape: String,
+    @SerializedName("base_happiness") val baseHappiness: Int
+)

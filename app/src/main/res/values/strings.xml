@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">PokeHexa Game</string>
+    <string name="app_name">PokeHexa</string>
     <string name="title_activity_files_setup">FilesSetup</string>
     <string name="title_activity_poke_hexa">PokeHexa</string>
     <string name="title_activity_select_data">SelectData</string>

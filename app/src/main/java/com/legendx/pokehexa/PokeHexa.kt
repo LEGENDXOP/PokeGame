@@ -16,18 +16,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.legendx.pokehexa.mainworkers.DataCache
 import com.legendx.pokehexa.mainworkers.FightMode
 import com.legendx.pokehexa.setup.FilesSetup
 import com.legendx.pokehexa.setup.screens.SelectData
 import com.legendx.pokehexa.ui.theme.PokeHexaGameTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 class PokeHexa : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

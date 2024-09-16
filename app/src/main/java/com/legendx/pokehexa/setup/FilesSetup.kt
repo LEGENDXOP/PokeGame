@@ -25,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.legendx.pokehexa.setup.screens.DownloadUi
-import com.legendx.pokehexa.setup.ui.theme.PokeHexaGameTheme
+import com.legendx.pokehexa.ui.theme.PokeHexaGameTheme
 import java.util.Locale
 
 class FilesSetup : ComponentActivity() {

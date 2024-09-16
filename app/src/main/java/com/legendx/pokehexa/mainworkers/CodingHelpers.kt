@@ -4,17 +4,19 @@ import com.google.gson.Gson
 import kotlin.random.Random
 
 object CodingHelpers {
-    fun <T> changeDataToString(data: T): String{
+    fun <T> changeDataToString(data: T): String {
         val gson = Gson()
         return gson.toJson(data)
     }
 
-    fun <T> changeStringToData(data: String, clazz: Class<T>): T{
+    fun <T> changeStringToData(data: String, clazz: Class<T>): T {
         val gson = Gson()
         return gson.fromJson(data, clazz)
     }
 
     fun convertToUserPokemon(pokemon: Pokemon, maxLevel: Int = 10): UserPokemon {
+        val catchRate = DataCache.speciesList.find { it.id == pokemon.id }
+        val baseCatchRate = catchRate?.captureRate ?: Random.nextInt(1, 255)
         return UserPokemon(
             name = pokemon.name,
             id = pokemon.id,
@@ -26,12 +28,12 @@ object CodingHelpers {
             types = pokemon.types,
             height = pokemon.height,
             weight = pokemon.weight,
-            baseCatchRate = Random.nextInt(180, 255)
+            baseCatchRate = baseCatchRate
         )
     }
 }
 
-object PokeHelpers{
+object PokeHelpers {
     private val typeChart: Map<String, Map<String, Double>> = mapOf(
         "Normal" to mapOf(
             "Rock" to 0.5,
@@ -49,6 +51,7 @@ object PokeHelpers{
             "Steel" to 2.0
         )
     )
+
     private fun calculateTypeEffectiveness(moveType: String, opponentTypes: List<String>): Double {
         var effectiveness = 1.0
         for (opponentType in opponentTypes) {
@@ -57,6 +60,7 @@ object PokeHelpers{
         }
         return effectiveness
     }
+
     fun calculateNewHp(
         currentHp: Int,
         move: Move,
