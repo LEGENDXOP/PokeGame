@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +56,7 @@ import androidx.compose.ui.unit.sp
 import com.legendx.pokehexa.PokeHexa
 import com.legendx.pokehexa.setup.tools.DownloadHelper
 import com.legendx.pokehexa.setup.tools.FileSys
+import com.legendx.pokehexa.tools.DataStoreManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -143,14 +145,21 @@ fun DownloadUi(modifier: Modifier) {
             OutlinedButton(onClick = {
                 CoroutineScope(Dispatchers.IO).launch {
                     println("Downloading file...")
-                    val isZipDownload = FileSys.isFileDownloaded("Resource$selectedFile.zip")
-                    val folderExist = FileSys.isFileDownloaded("images")
+                    val isZipDownload =
+                        FileSys.isFileDownloaded("Resource$selectedFile.zip", context)
+                    val folderExist = FileSys.isFileDownloaded("images", context)
                     if (!folderExist) {
                         if (isZipDownload) {
                             val unzip =
-                                FileSys.unzipDirectlyInDocuments("Resource$selectedFile.zip")
+                                FileSys.unzipDirectlyInDocuments(
+                                    "Resource$selectedFile.zip",
+                                    context
+                                )
                             val delZip =
-                                FileSys.deleteFileFromDocuments("Resource$selectedFile.zip")
+                                FileSys.deleteFileFromDocuments(
+                                    "Resource$selectedFile.zip",
+                                    context
+                                )
                             if (unzip && delZip) {
                                 println("Downloaded successfully")
                                 withContext(Dispatchers.Main) {
@@ -246,6 +255,8 @@ fun ChooseFile(dismiss: (confirm: FileResult) -> Unit) {
 fun DialogForDownload(context: Context, downloadId: Long?) {
     var downloadProgress by remember { mutableIntStateOf(0) }
     val intent = Intent(context, PokeHexa::class.java)
+    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    val scope = rememberCoroutineScope()
     val activity = context as Activity
     LaunchedEffect(downloadId) {
         downloadId?.let { id ->
@@ -274,7 +285,11 @@ fun DialogForDownload(context: Context, downloadId: Long?) {
         confirmButton = {
             if (downloadProgress >= 100) {
                 TextButton(onClick = {
-                    activity.startActivity(intent).also { activity.finish() }
+                    scope.launch {
+                        DataStoreManager.saveSetup(context, true)
+                    }.invokeOnCompletion {
+                        activity.startActivity(intent).also { activity.finish() }
+                    }
                 }) {
                     Text(text = "Next", fontSize = 14.sp)
                 }
@@ -311,18 +326,18 @@ suspend fun processAfterDownload(context: Context) {
     val fileName1 = "Resource1.zip"
     val fileName2 = "Resource2.zip"
 
-    if (FileSys.isFileDownloaded(fileName1)) {
-        val unzip = FileSys.unzipDirectlyInDocuments(fileName1)
-        val delZip = FileSys.deleteFileFromDocuments(fileName1)
+    if (FileSys.isFileDownloaded(fileName1, context)) {
+        val unzip = FileSys.unzipDirectlyInDocuments(fileName1, context)
+        val delZip = FileSys.deleteFileFromDocuments(fileName1, context)
         if (unzip && delZip) {
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Resources optimized successfully", Toast.LENGTH_SHORT)
                     .show()
             }
         }
-    } else if (FileSys.isFileDownloaded(fileName2)) {
-        val unzip = FileSys.unzipDirectlyInDocuments(fileName2)
-        val delZip = FileSys.deleteFileFromDocuments(fileName2)
+    } else if (FileSys.isFileDownloaded(fileName2, context)) {
+        val unzip = FileSys.unzipDirectlyInDocuments(fileName2, context)
+        val delZip = FileSys.deleteFileFromDocuments(fileName2, context)
         if (unzip && delZip) {
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Resources optimized successfully", Toast.LENGTH_SHORT)

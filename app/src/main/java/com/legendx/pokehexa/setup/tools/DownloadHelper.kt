@@ -8,11 +8,14 @@ import android.util.Log
 
 object DownloadHelper {
     fun downloadFile(context: Context, url: String, fileName: String): Long {
+        println("Downloading $fileName")
+        val destinationPath = context.getExternalFilesDir(null)?.absolutePath + "/$fileName"
+        println(destinationPath)
         val request = DownloadManager.Request(Uri.parse(url))
             .setTitle("Downloading $fileName")
             .setDescription("Downloading $fileName")
+            .setDestinationUri(Uri.parse("file://$destinationPath"))
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOCUMENTS, fileName)
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(true)
 

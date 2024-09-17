@@ -11,6 +11,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.legendx.pokehexa.setup.screens.SelectData
+import com.legendx.pokehexa.tools.DataStoreManager
 import com.legendx.pokehexa.ui.theme.PokeHexaGameTheme
 
 class MainActivity : ComponentActivity() {
@@ -23,10 +25,18 @@ class MainActivity : ComponentActivity() {
                     innerPadding.calculateTopPadding()
                     val context = LocalContext.current
                     LaunchedEffect(true) {
-                        val intent = Intent(context, PokeHexa::class.java)
-                        val activity = (context as Activity)
-                        activity.startActivity(intent)
-                        activity.finish()
+                        val isSetupDone = DataStoreManager.getSetup(context)
+                        if(!isSetupDone){
+                            val intent = Intent(context, PokeHexa::class.java)
+                            val activity = (context as Activity)
+                            activity.startActivity(intent)
+                            activity.finish()
+                        }else{
+                            val intent = Intent(context, SelectData::class.java)
+                            val activity = (context as Activity)
+                            activity.startActivity(intent)
+                            activity.finish()
+                        }
                     }
                 }
             }

@@ -65,220 +65,239 @@ class FightMode : ComponentActivity() {
             }
         }
     }
-}
 
-data class GameOver(
-    val isGameOver: Boolean = false,
-    val isWin: Boolean = false,
-    val isCaptured: Boolean = false
-)
+    data class GameOver(
+        val isGameOver: Boolean = false,
+        val isWin: Boolean = false,
+        val isCaptured: Boolean = false
+    )
 
-@Composable
-fun FightModeScreen(modifier: Modifier) {
-    val context = LocalContext.current
-    val pokeDao = DataBaseBuilder.getDataBase(context).userDao()
-    val scope = rememberCoroutineScope()
-    val pokeList by pokeDao.getAllUserData().collectAsState(initial = emptyList())
-    var isFight by remember { mutableStateOf(false) }
-    var isGameOver by remember { mutableStateOf(GameOver()) }
-    val enemyPoke = remember { DataCache.pokemonList.random() }
-    var pokeCash by remember { mutableIntStateOf(0) }
-    LaunchedEffect(pokeList) {
-        if (pokeList.isNotEmpty()) {
-            pokeCash = pokeList.first().pokeCash
+    @Composable
+    fun FightModeScreen(modifier: Modifier) {
+        val context = LocalContext.current
+        val pokeDao = DataBaseBuilder.getDataBase(context).userDao()
+        val scope = rememberCoroutineScope()
+        val pokeList by pokeDao.getAllUserData().collectAsState(initial = emptyList())
+        var isFight by remember { mutableStateOf(false) }
+        var isGameOver by remember { mutableStateOf(GameOver()) }
+        val enemyPoke = remember { DataCache.pokemonList.random() }
+        var pokeCash by remember { mutableIntStateOf(0) }
+        LaunchedEffect(pokeList) {
+            if (pokeList.isNotEmpty()) {
+                pokeCash = pokeList.first().pokeCash
+            }
         }
-    }
-    Column(modifier = modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        if (!isFight) {
-            Image(
-                painter = painterResource(R.drawable.mega_mewtwo_x), contentDescription = null,
-                modifier = Modifier
-                    .size(200.dp)
-                    .padding(16.dp)
-            )
-            Text(text = enemyPoke.name, style = MaterialTheme.typography.headlineSmall)
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedButton(onClick = { isFight = true }) {
-                Text(text = "Fight")
-            }
-        } else if (isGameOver.isGameOver) {
-            if (isGameOver.isWin) {
-                val gameText = "You Defeated the enemy you won 100 PokeCash"
-                WinGameScreen(context, scope, pokeDao, pokeList, pokeCash, 100, gameText)
-            } else if (isGameOver.isCaptured) {
-                val gameText = "You caught the enemy Pokemon you won 200 PokeCash"
-                WinGameScreen(context, scope, pokeDao, pokeList, pokeCash, 200, gameText)
+        Column(
+            modifier = modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (!isFight) {
+                Image(
+                    painter = painterResource(R.drawable.mega_mewtwo_x), contentDescription = null,
+                    modifier = Modifier
+                        .size(200.dp)
+                        .padding(16.dp)
+                )
+                Text(text = enemyPoke.name, style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(onClick = { isFight = true }) {
+                    Text(text = "Fight")
+                }
+            } else if (isGameOver.isGameOver) {
+                if (isGameOver.isWin) {
+                    val gameText = "You Defeated the enemy you won 100 PokeCash"
+                    WinGameScreen(context, scope, pokeDao, pokeList, pokeCash, 100, gameText)
+                } else if (isGameOver.isCaptured) {
+                    val gameText = "You caught the enemy Pokemon you won 200 PokeCash"
+                    WinGameScreen(context, scope, pokeDao, pokeList, pokeCash, 200, gameText)
+                } else {
+                    val gameText = "You lost the battle you will still get 50 PokeCash"
+                    WinGameScreen(context, scope, pokeDao, pokeList, pokeCash, 50, gameText)
+                }
             } else {
-                val gameText = "You lost the battle you will still get 50 PokeCash"
-                WinGameScreen(context, scope, pokeDao, pokeList, pokeCash, 50, gameText)
-            }
-        } else {
-            val myPokeFirst = pokeList.first().totalPokemons.first()
-            val myPokeMoves = myPokeFirst.moves.filter { it.levelLearnedAt <= myPokeFirst.level }
-            val enemyPokeFirst = remember { CodingHelpers.convertToUserPokemon(enemyPoke) }
-            val enemyPokeMoves =
-                enemyPokeFirst.moves.filter { it.levelLearnedAt <= enemyPokeFirst.level }
-            val finalMovesMine = remember { myPokeMoves.shuffled().take(4) }
-            val finalMovesEnemy = remember { enemyPokeMoves.shuffled().take(4) }
-            var myPokeHp by remember { mutableIntStateOf(myPokeFirst.stats.hp) }
-            var enemyPokeHp by remember { mutableIntStateOf(enemyPokeFirst.stats.hp) }
-            val pokeBalls =
-                remember { pokeList.first().pokeBalls.first().takeIf { it.quantity > 0 } }
-            var pokeBallCurrent by remember { mutableIntStateOf(pokeBalls?.quantity ?: 0) }
-            Image(
-                painter = painterResource(R.drawable.mega_mewtwo_x), contentDescription = null,
-                modifier = Modifier
-                    .size(200.dp)
-                    .padding(16.dp)
-            )
-            val fightDetailText =
-                "${myPokeFirst.name} (${myPokeFirst.level}) vs ${enemyPokeFirst.name} (${enemyPokeFirst.level})\n\n${myPokeFirst.name} has $myPokeHp HP\n${enemyPokeFirst.name} has $enemyPokeHp HP"
-            Text(text = fightDetailText, style = MaterialTheme.typography.headlineSmall)
-            Spacer(modifier = Modifier.height(16.dp))
-            BattleButtons(listOfMoves = finalMovesMine) { move ->
-                PokeHelpers.calculateNewHp(
-                    enemyPokeHp,
-                    move,
-                    myPokeFirst,
-                    enemyPokeFirst
-                ).also {
-                    if (it == 0) {
-                        isGameOver = GameOver(isGameOver = true, isWin = true)
-                    }
-                    enemyPokeHp = it
-                }
-                scope.launch {
-                    delay(1000)
-                    try {
-                        PokeHelpers.calculateNewHp(
-                            myPokeHp,
-                            finalMovesEnemy.random(),
-                            enemyPokeFirst,
-                            myPokeFirst
-                        ).also {
-                            if (it == 0) {
-                                isGameOver = GameOver(isGameOver = true, isWin = false)
-                            }
-                            myPokeHp = it
+                val myPokeFirst = pokeList.first().totalPokemons.first()
+                val myPokeMoves =
+                    myPokeFirst.moves.filter { it.levelLearnedAt <= myPokeFirst.level }
+                val enemyPokeFirst = remember { CodingHelpers.convertToUserPokemon(enemyPoke) }
+                val enemyPokeMoves =
+                    enemyPokeFirst.moves.filter { it.levelLearnedAt <= enemyPokeFirst.level }
+                val finalMovesMine = remember { myPokeMoves.shuffled().take(4) }
+                val finalMovesEnemy = remember { enemyPokeMoves.shuffled().take(4) }
+                var myPokeHp by remember { mutableIntStateOf(myPokeFirst.stats.hp) }
+                var enemyPokeHp by remember { mutableIntStateOf(enemyPokeFirst.stats.hp) }
+                val pokeBalls =
+                    remember { pokeList.first().pokeBalls.first().takeIf { it.quantity > 0 } }
+                var pokeBallCurrent by remember { mutableIntStateOf(pokeBalls?.quantity ?: 0) }
+                Image(
+                    painter = painterResource(R.drawable.mega_mewtwo_x), contentDescription = null,
+                    modifier = Modifier
+                        .size(200.dp)
+                        .padding(16.dp)
+                )
+                val fightDetailText =
+                    "${myPokeFirst.name} (${myPokeFirst.level}) vs ${enemyPokeFirst.name} (${enemyPokeFirst.level})\n\n${myPokeFirst.name} has $myPokeHp HP\n${enemyPokeFirst.name} has $enemyPokeHp HP"
+                Text(text = fightDetailText, style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(16.dp))
+                BattleButtons(listOfMoves = finalMovesMine) { move ->
+                    PokeHelpers.calculateNewHp(
+                        enemyPokeHp,
+                        move,
+                        myPokeFirst,
+                        enemyPokeFirst
+                    ).also {
+                        if (it == 0) {
+                            isGameOver = GameOver(isGameOver = true, isWin = true)
                         }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
+                        enemyPokeHp = it
                     }
-                }
-            }
-            Spacer(modifier = Modifier.height(50.dp))
-            Text(text = "Total Poke Balls: $pokeBallCurrent", modifier = Modifier
-                .padding(16.dp)
-                .clickable {
-                    buyPokeBallDialog(context, pokeDao, pokeList, pokeCash)
-                })
-            Row {
-                TextButton(onClick = {
-                    Intent(context, PokeHexa::class.java).also {
-                        context.startActivity(it)
-                    }
-                }) {
-                    Text(text = "Run Away")
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                TextButton(onClick = {
-                    if (pokeBallCurrent > 0) {
-                        scope.launch {
-                            println("PokeBall: $pokeBallCurrent")
-                            PokeHelpers.tryCatch(
+                    scope.launch {
+                        delay(1000)
+                        try {
+                            PokeHelpers.calculateNewHp(
+                                myPokeHp,
+                                finalMovesEnemy.random(),
                                 enemyPokeFirst,
-                                enemyPokeHp,
-                                pokeBalls!!
+                                myPokeFirst
                             ).also {
-                                if (it) {
-                                    isGameOver = GameOver(isGameOver = true, isCaptured = true)
-                                    enemyPokeFirst.baseCatchRate = null
-                                    val oldList = pokeList.first().totalPokemons.toMutableList()
-                                    oldList.add(enemyPokeFirst)
-                                    val newList = pokeList.first().copy(totalPokemons = oldList)
-                                    pokeDao.addUserData(newList)
-                                    println("Pokemon Caught")
-                                } else {
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(
-                                            context,
-                                            "Failed to catch",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                if (it == 0) {
+                                    isGameOver = GameOver(isGameOver = true, isWin = false)
+                                }
+                                myPokeHp = it
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(50.dp))
+                Text(text = "Total Poke Balls: $pokeBallCurrent", modifier = Modifier
+                    .padding(16.dp)
+                    .clickable {
+                        buyPokeBallDialog(context, pokeDao, pokeList, pokeCash)
+                    })
+                Row {
+                    TextButton(onClick = {
+                        Intent(context, PokeHexa::class.java).also {
+                            context.startActivity(it)
+                        }
+                    }) {
+                        Text(text = "Run Away")
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    TextButton(onClick = {
+                        if (pokeBallCurrent > 0) {
+                            scope.launch {
+                                println("PokeBall: $pokeBallCurrent")
+                                PokeHelpers.tryCatch(
+                                    enemyPokeFirst,
+                                    enemyPokeHp,
+                                    pokeBalls!!
+                                ).also {
+                                    if (it) {
+                                        isGameOver = GameOver(isGameOver = true, isCaptured = true)
+                                        enemyPokeFirst.baseCatchRate = null
+                                        val oldList = pokeList.first().totalPokemons.toMutableList()
+                                        oldList.add(enemyPokeFirst)
+                                        val newList = pokeList.first().copy(totalPokemons = oldList)
+                                        pokeDao.addUserData(newList)
+                                        println("Pokemon Caught")
+                                    } else {
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(
+                                                context,
+                                                "Failed to catch",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
                                     }
                                 }
+                                pokeBallCurrent -= 1
+                                pokeDao.addUserData(
+                                    pokeList.first()
+                                        .copy(pokeBalls = listOf(pokeBalls.copy(quantity = pokeBallCurrent)))
+                                )
                             }
-                            pokeBallCurrent -= 1
-                            pokeDao.addUserData(
-                                pokeList.first()
-                                    .copy(pokeBalls = listOf(pokeBalls.copy(quantity = pokeBallCurrent)))
-                            )
+                        } else {
+                            buyPokeBallDialog(context, pokeDao, pokeList, pokeCash)
                         }
-                    } else {
-                        buyPokeBallDialog(context, pokeDao, pokeList, pokeCash)
+                    }) {
+                        Text(text = "Catch")
                     }
-                }) {
-                    Text(text = "Catch")
+                }
+            }
+        }
+    }
+
+
+    @OptIn(ExperimentalLayoutApi::class)
+    @Composable
+    fun BattleButtons(listOfMoves: List<Move>, onClick: (Move) -> Unit) {
+        FlowRow(
+            maxItemsInEachRow = 2,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            listOfMoves.forEach { move ->
+                OutlinedButton(onClick = { onClick(move) }) {
+                    Text(text = move.move)
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun WinGameScreen(
+        context: Context,
+        scope: CoroutineScope,
+        pokeDao: UserDataDao,
+        pokeList: List<UserTable>,
+        pokeCash: Int,
+        amount: Int,
+        text: String
+    ) {
+        Column {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(16.dp)
+            )
+            Text(
+                text = "total available PokeCash: $pokeCash",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(16.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(onClick = {
+                Intent(context, FightMode::class.java).also {
+                    context.startActivity(it)
+                }
+            }) {
+                Text(text = "Next Pokemon")
+            }
+            LaunchedEffect(true) {
+                scope.launch {
+                    pokeDao.addUserData(
+                        pokeList.first().copy(pokeCash = pokeList.first().pokeCash + amount)
+                    )
                 }
             }
         }
     }
 }
 
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun BattleButtons(listOfMoves: List<Move>, onClick: (Move) -> Unit) {
-    FlowRow(
-        maxItemsInEachRow = 2,
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        listOfMoves.forEach { move ->
-            OutlinedButton(onClick = { onClick(move) }) {
-                Text(text = move.move)
+fun pokeCaughtDialog(context: Context, pokemon: UserPokemon) {
+        AlertDialog.Builder(context)
+            .setTitle("Pokemon Caught")
+            .setMessage("You caught ${pokemon.name} with level ${pokemon.level}")
+            .setPositiveButton("Ok") { dialog, _ ->
+                Intent(context, PokeHexa::class.java).also {
+                    context.startActivity(it)
+                }
+                dialog.dismiss()
             }
-        }
-    }
-}
-
-@Composable
-fun WinGameScreen(
-    context: Context,
-    scope: CoroutineScope,
-    pokeDao: UserDataDao,
-    pokeList: List<UserTable>,
-    pokeCash: Int,
-    amount: Int,
-    text: String
-) {
-    Column {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(16.dp)
-        )
-        Text(
-            text = "total available PokeCash: $pokeCash",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(16.dp)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        TextButton(onClick = {
-            Intent(context, FightMode::class.java).also {
-                context.startActivity(it)
-            }
-        }) {
-            Text(text = "Next Pokemon")
-        }
-        LaunchedEffect(true) {
-            scope.launch {
-                pokeDao.addUserData(
-                    pokeList.first().copy(pokeCash = pokeList.first().pokeCash + amount)
-                )
-            }
-        }
-    }
+            .setIcon(R.drawable.mega_mewtwo_x)
+            .setCancelable(false)
+            .show()
 }
 
 fun buyPokeBallDialog(
@@ -317,19 +336,4 @@ fun buyPokeBallDialog(
         .setIcon(R.drawable.mega_mewtwo_x)
         .show()
 
-}
-
-fun pokeCaughtDialog(context: Context, pokemon: UserPokemon) {
-    AlertDialog.Builder(context)
-        .setTitle("Pokemon Caught")
-        .setMessage("You caught ${pokemon.name} with level ${pokemon.level}")
-        .setPositiveButton("Ok") { dialog, _ ->
-            Intent(context, PokeHexa::class.java).also {
-                context.startActivity(it)
-            }
-            dialog.dismiss()
-        }
-        .setIcon(R.drawable.mega_mewtwo_x)
-        .setCancelable(false)
-        .show()
 }

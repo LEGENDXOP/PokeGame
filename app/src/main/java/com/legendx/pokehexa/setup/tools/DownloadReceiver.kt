@@ -17,15 +17,15 @@ class DownloadReceiver : BroadcastReceiver() {
         val fileName1 = "Resource1.zip"
         val fileName2 = "Resource2.zip"
         println("Download Receiver Called")
-        if (FileSys.isFileDownloaded(fileName1)) {
-            val unzip = FileSys.unzipDirectlyInDocuments(fileName1)
-            val delZip = FileSys.deleteFileFromDocuments(fileName1)
+        if (FileSys.isFileDownloaded(fileName1, context)) {
+            val unzip = FileSys.unzipDirectlyInDocuments(fileName1, context)
+            val delZip = FileSys.deleteFileFromDocuments(fileName1, context)
             if (unzip && delZip) {
                 Toast.makeText(context, "Downloaded successfully", Toast.LENGTH_SHORT).show()
             }
-        } else if (FileSys.isFileDownloaded(fileName2)) {
-            val unzip = FileSys.unzipDirectlyInDocuments(fileName2)
-            val delZip = FileSys.deleteFileFromDocuments(fileName2)
+        } else if (FileSys.isFileDownloaded(fileName2, context)) {
+            val unzip = FileSys.unzipDirectlyInDocuments(fileName2, context)
+            val delZip = FileSys.deleteFileFromDocuments(fileName2, context)
             if (unzip && delZip) {
                 Toast.makeText(context, "Downloaded successfully", Toast.LENGTH_SHORT).show()
             }
@@ -38,16 +38,14 @@ class DownloadReceiver : BroadcastReceiver() {
 }
 
 object FileSys {
-    fun isFileDownloaded(fileName: String): Boolean {
-        val downloadDir =
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+    fun isFileDownloaded(fileName: String, context: Context?): Boolean {
+        val downloadDir = context?.getExternalFilesDir(null)?.absolutePath
         val file = File(downloadDir, fileName)
         return file.exists()
     }
 
-    fun unzipDirectlyInDocuments(fileName: String): Boolean {
-        val documentsDir =
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+    fun unzipDirectlyInDocuments(fileName: String, context: Context?): Boolean {
+        val documentsDir = context?.getExternalFilesDir(null)?.absolutePath
         val zipFilePath = File(documentsDir, fileName).absolutePath
 
         return try {
@@ -76,9 +74,8 @@ object FileSys {
         }
     }
 
-    fun deleteFileFromDocuments(fileName: String): Boolean {
-        val documentsDir =
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+    fun deleteFileFromDocuments(fileName: String, context: Context?): Boolean {
+        val documentsDir = context?.getExternalFilesDir(null)?.absolutePath
         val fileToDelete = File(documentsDir, fileName)
 
         return if (fileToDelete.exists()) {
