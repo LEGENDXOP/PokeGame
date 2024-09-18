@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,7 +35,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -53,9 +53,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.legendx.pokehexa.PokeHexa
 import com.legendx.pokehexa.setup.tools.DownloadHelper
 import com.legendx.pokehexa.setup.tools.FileSys
+import com.legendx.pokehexa.setup.viewmodels.SetupViewModel
 import com.legendx.pokehexa.tools.DataStoreManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,16 +68,10 @@ import kotlinx.coroutines.withContext
 @Composable
 fun DownloadUi(modifier: Modifier) {
     val screenHeight = LocalConfiguration.current.screenHeightDp
-    var showDialogFile by remember { mutableStateOf(false) }
-    var showDialogText by remember { mutableStateOf(false) }
-    var showDialogDownload by remember { mutableStateOf(false) }
-    var selectedFile by remember { mutableIntStateOf(0) }
-    var userName by remember { mutableStateOf("") }
-    var userUName by remember { mutableStateOf("") }
-    var userAge by remember { mutableStateOf("") }
-    var downloadId by remember { mutableStateOf<Long?>(null) }
     val focus = LocalFocusManager.current
     val context = LocalContext.current
+    val setupVM = viewModel<SetupViewModel>()
+
     Column(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Top,
@@ -85,14 +81,14 @@ fun DownloadUi(modifier: Modifier) {
         Text(text = "Hello Dear User!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(50.dp))
         OutlinedTextField(
-            value = userName, onValueChange = { userName = it },
+            value = setupVM.userName, onValueChange = { setupVM.userName = it },
             label = { Text(text = "Enter your name") },
             leadingIcon = { Icon(imageVector = Icons.Default.Person, contentDescription = null) },
             keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
         )
         Spacer(modifier = Modifier.height(20.dp))
         OutlinedTextField(
-            value = userUName, onValueChange = { userUName = it },
+            value = setupVM.userUName, onValueChange = { setupVM.userUName = it },
             label = { Text(text = "Enter your username") },
             leadingIcon = {
                 Icon(
@@ -104,7 +100,7 @@ fun DownloadUi(modifier: Modifier) {
         )
         Spacer(modifier = Modifier.height(20.dp))
         OutlinedTextField(
-            value = userAge, onValueChange = { userAge = it },
+            value = setupVM.userAge, onValueChange = { setupVM.userAge = it },
             label = { Text(text = "Enter your age") },
             leadingIcon = { Icon(imageVector = Icons.Default.Cake, contentDescription = null) },
             keyboardOptions = KeyboardOptions.Default.copy(
@@ -114,8 +110,8 @@ fun DownloadUi(modifier: Modifier) {
             keyboardActions = KeyboardActions(onDone = { focus.clearFocus() })
         )
         Spacer(modifier = Modifier.height(20.dp))
-        if (selectedFile == 0) {
-            OutlinedButton(onClick = { showDialogText = true }) {
+        if (setupVM.selectedFile == 0) {
+            OutlinedButton(onClick = { setupVM.showDialogText = true }) {
                 Text(
                     text = "Details About Resource",
                     fontSize = 14.sp,
@@ -123,89 +119,46 @@ fun DownloadUi(modifier: Modifier) {
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
-            OutlinedButton(onClick = { showDialogFile = true }) {
+            OutlinedButton(onClick = { setupVM.showDialogFile = true }) {
                 Text(text = "Choose Resource", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Selected File: ", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 Text(
-                    text = "Resource $selectedFile",
+                    text = "Resource ${setupVM.selectedFile}",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.width(10.dp))
-                IconButton(onClick = { selectedFile = 0 }) {
+                IconButton(onClick = { setupVM.selectedFile = 0 }) {
                     Icon(imageVector = Icons.Default.Delete, contentDescription = null)
                 }
             }
         }
         Spacer(modifier = Modifier.height(20.dp))
-        if (userName.isNotEmpty() && userUName.isNotEmpty() && userAge.isNotEmpty() && selectedFile != 0) {
+        if (setupVM.userName.isNotEmpty() && setupVM.userUName.isNotEmpty() && setupVM.userAge.isNotEmpty() && setupVM.selectedFile != 0) {
             OutlinedButton(onClick = {
                 CoroutineScope(Dispatchers.IO).launch {
-                    println("Downloading file...")
-                    val isZipDownload =
-                        FileSys.isFileDownloaded("Resource$selectedFile.zip", context)
-                    val folderExist = FileSys.isFileDownloaded("images", context)
-                    if (!folderExist) {
-                        if (isZipDownload) {
-                            val unzip =
-                                FileSys.unzipDirectlyInDocuments(
-                                    "Resource$selectedFile.zip",
-                                    context
-                                )
-                            val delZip =
-                                FileSys.deleteFileFromDocuments(
-                                    "Resource$selectedFile.zip",
-                                    context
-                                )
-                            if (unzip && delZip) {
-                                println("Downloaded successfully")
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(
-                                        context,
-                                        "Downloaded successfully",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
-                        } else {
-                            downloadId = DownloadHelper.downloadFile(
-                                context,
-                                "https://legendx.in/images.zip",
-                                "Resource$selectedFile.zip"
-                            )
-                            showDialogDownload = true
-                        }
-                    } else {
-                        println("Folder already exists")
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                "Resource Already Downloaded",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
+                    setupVM.startDownload(context)
                 }
             }) {
                 Text(text = "Download", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         }
-        if (showDialogText) {
-            DialogForDetails { showDialogText = false }
+        if (setupVM.showDialogText) {
+            DialogForDetails { setupVM.showDialogText = false }
         }
-        if (showDialogFile) {
+        if (setupVM.showDialogFile) {
             ChooseFile { confirm ->
-                showDialogFile = false
+                setupVM.showDialogFile = false
                 if (confirm.isConfirmed) {
-                    selectedFile = confirm.selectedFile
+                    setupVM.selectedFile = confirm.selectedFile
                 }
             }
         }
-        if (showDialogDownload) {
-            DialogForDownload(context, downloadId)
+        if (setupVM.showDialogDownload) {
+            DialogForDownload(context, setupVM.downloadId)
         }
     }
 }
@@ -225,6 +178,7 @@ fun ChooseFile(dismiss: (confirm: FileResult) -> Unit) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically, modifier = Modifier
                         .fillMaxWidth()
+                        .clickable { selectedRadio = 1 }
                 ) {
                     RadioButton(selected = selectedRadio == 1, onClick = { selectedRadio = 1 })
                     Text(
@@ -237,6 +191,7 @@ fun ChooseFile(dismiss: (confirm: FileResult) -> Unit) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically, modifier = Modifier
                         .fillMaxWidth()
+                        .clickable { selectedRadio = 2 }
                 ) {
                     RadioButton(selected = selectedRadio == 2, onClick = { selectedRadio = 2 })
                     Text(
@@ -254,9 +209,7 @@ fun ChooseFile(dismiss: (confirm: FileResult) -> Unit) {
 @Composable
 fun DialogForDownload(context: Context, downloadId: Long?) {
     var downloadProgress by remember { mutableIntStateOf(0) }
-    val intent = Intent(context, PokeHexa::class.java)
-    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-    val scope = rememberCoroutineScope()
+    val intent = Intent(context, SelectData::class.java)
     val activity = context as Activity
     LaunchedEffect(downloadId) {
         downloadId?.let { id ->
@@ -285,11 +238,7 @@ fun DialogForDownload(context: Context, downloadId: Long?) {
         confirmButton = {
             if (downloadProgress >= 100) {
                 TextButton(onClick = {
-                    scope.launch {
-                        DataStoreManager.saveSetup(context, true)
-                    }.invokeOnCompletion {
-                        activity.startActivity(intent).also { activity.finish() }
-                    }
+                    activity.startActivity(intent).also { activity.finish() }
                 }) {
                     Text(text = "Next", fontSize = 14.sp)
                 }

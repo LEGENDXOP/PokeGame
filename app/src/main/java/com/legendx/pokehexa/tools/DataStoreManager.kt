@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.first
 object DataStoreManager {
     private const val PREFERENCES_NAME = "pokehexa_preferences"
     private val SETUP_COMPLETED = stringPreferencesKey("setup_completed")
+    private val SETUP_FILE = stringPreferencesKey("setup_file")
     private val Context.dataStore by preferencesDataStore(PREFERENCES_NAME)
 
     suspend fun saveSetup(context: Context, isSetupCompleted: Boolean){
@@ -22,9 +23,15 @@ object DataStoreManager {
         return preferences[SETUP_COMPLETED]?.toBoolean() ?: false
     }
 
-    suspend fun deleteSetup(context: Context){
+    suspend fun saveSetupFile(context: Context, setupFile: Int){
         context.applicationContext.dataStore.edit {
-            it.remove(SETUP_COMPLETED)
+            it[SETUP_FILE] = setupFile.toString()
         }
     }
+
+    suspend fun getSetupFile(context: Context): Int{
+        val preferences = context.applicationContext.dataStore.data.first()
+        return preferences[SETUP_FILE]?.toInt() ?: 0
+    }
+
 }
