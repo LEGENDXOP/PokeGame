@@ -21,7 +21,7 @@ class SetupViewModel: ViewModel() {
     var selectedFile by mutableIntStateOf(0)
     var userName by mutableStateOf("")
     var userUName by mutableStateOf("")
-    var userAge by mutableStateOf("")
+    var userPassword by mutableStateOf("")
     var downloadId by mutableStateOf<Long?>(null)
     private lateinit var urlFile: String
 

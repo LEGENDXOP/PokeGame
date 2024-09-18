@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.legendx.pokehexa.R
 import com.legendx.pokehexa.database.DataBaseBuilder
 import com.legendx.pokehexa.database.UserTable
@@ -42,6 +45,7 @@ import com.legendx.pokehexa.mainworkers.Pokemon
 import com.legendx.pokehexa.mainworkers.UserPokeBalls
 import com.legendx.pokehexa.mainworkers.UserPokemon
 import com.legendx.pokehexa.setup.screens.ui.theme.PokeHexaGameTheme
+import com.legendx.pokehexa.setup.viewmodels.SetupPokeViewModel
 import kotlinx.coroutines.launch
 
 class SelectData : ComponentActivity() {
@@ -65,12 +69,10 @@ fun DataSelection(modifier: Modifier) {
         val userDao = DataBaseBuilder.getDataBase(context).userDao()
         val scope = rememberCoroutineScope()
         val scrollState = rememberLazyListState()
-        var pokeData by remember { mutableStateOf<Pokemon?>(null) }
-        val startersPokemons = remember { mutableStateListOf<Pokemon>() }
-        val myPokes = remember { mutableStateListOf<UserTable>() }
+        val pokeModel = viewModel<SetupPokeViewModel>()
 
         LaunchedEffect(true) {
-            startersPokemons.addAll(
+            pokeModel.startersPokemons.addAll(
                 listOf(
                     DataCache.pokemonList.find { it.name == "bulbasaur" }!!,
                     DataCache.pokemonList.find { it.name == "charmander" }!!,
@@ -78,41 +80,37 @@ fun DataSelection(modifier: Modifier) {
                     DataCache.pokemonList.find { it.name == "pikachu" }!!
                 )
             )
-            userDao.getAllUserData().collect {
-                myPokes.clear()
-                myPokes.addAll(it)
-                println(it)
-            }
+
         }
 
         LazyRow(state = scrollState) {
-            items(startersPokemons.size) { poke ->
-                ChoosePokemon(startersPokemons[poke]) { pokemon ->
-                    pokeData = pokemon
-                    println(pokeData)
+            items(pokeModel.startersPokemons.size) { poke ->
+                ChoosePokemon(pokeModel.startersPokemons[poke]) { pokemon ->
+                    pokeModel.pokeData = pokemon
+                    println(pokeModel.pokeData)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
         TextButton(onClick = {
-            if (pokeData != null) {
+            if (pokeModel.pokeData != null) {
                 val pokeBall = UserPokeBalls(
                     name = PokeBallsCategory.PokeBall,
                     id = 1,
                     quantity = 20,
                 )
                 val pokeMine = UserPokemon(
-                    name = pokeData!!.name,
-                    id = pokeData!!.id,
+                    name = pokeModel.pokeData!!.name,
+                    id =  pokeModel.pokeData!!.id,
                     level = 15,
                     experience = 21,
-                    moves = pokeData!!.moves,
-                    stats = pokeData!!.stats,
-                    abilities = pokeData!!.abilities,
-                    types = pokeData!!.types,
-                    height = pokeData!!.height,
-                    weight = pokeData!!.weight
+                    moves =  pokeModel.pokeData!!.moves,
+                    stats =  pokeModel.pokeData!!.stats,
+                    abilities =  pokeModel.pokeData!!.abilities,
+                    types =  pokeModel.pokeData!!.types,
+                    height =  pokeModel.pokeData!!.height,
+                    weight =  pokeModel.pokeData!!.weight
                 )
                 val pokeTable = UserTable(
                     id = 1,
@@ -135,12 +133,8 @@ fun DataSelection(modifier: Modifier) {
             Text(text = "Save Data")
         }
         Spacer(modifier = Modifier.height(12.dp))
-        if (myPokes.isNotEmpty()) {
-            val fullDetail = "name: ${myPokes[0].totalPokemons[0].name}\n" +
-                    "level: ${myPokes[0].totalPokemons[0].level}\n" +
-                    "experience: ${myPokes[0].totalPokemons[0].experience}\n"
-            Text(text = fullDetail)
-
+        if (pokeModel.pokeData != null){
+            Text(text = "Selected Pokemon: ${pokeModel.pokeData!!.name}")
         }
     }
 }

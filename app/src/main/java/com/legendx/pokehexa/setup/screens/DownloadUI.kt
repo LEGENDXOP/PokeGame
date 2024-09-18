@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -35,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -55,6 +57,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.legendx.pokehexa.PokeHexa
+import com.legendx.pokehexa.database.DataBaseBuilder
+import com.legendx.pokehexa.database.UserStart
 import com.legendx.pokehexa.setup.tools.DownloadHelper
 import com.legendx.pokehexa.setup.tools.FileSys
 import com.legendx.pokehexa.setup.viewmodels.SetupViewModel
@@ -100,9 +104,9 @@ fun DownloadUi(modifier: Modifier) {
         )
         Spacer(modifier = Modifier.height(20.dp))
         OutlinedTextField(
-            value = setupVM.userAge, onValueChange = { setupVM.userAge = it },
-            label = { Text(text = "Enter your age") },
-            leadingIcon = { Icon(imageVector = Icons.Default.Cake, contentDescription = null) },
+            value = setupVM.userPassword, onValueChange = { setupVM.userPassword = it },
+            label = { Text(text = "Enter your password") },
+            leadingIcon = { Icon(imageVector = Icons.Default.Password, contentDescription = null) },
             keyboardOptions = KeyboardOptions.Default.copy(
                 imeAction = ImeAction.Done,
                 keyboardType = KeyboardType.Number
@@ -137,7 +141,7 @@ fun DownloadUi(modifier: Modifier) {
             }
         }
         Spacer(modifier = Modifier.height(20.dp))
-        if (setupVM.userName.isNotEmpty() && setupVM.userUName.isNotEmpty() && setupVM.userAge.isNotEmpty() && setupVM.selectedFile != 0) {
+        if (setupVM.userName.isNotEmpty() && setupVM.userUName.isNotEmpty() && setupVM.userPassword.isNotEmpty() && setupVM.selectedFile != 0) {
             OutlinedButton(onClick = {
                 CoroutineScope(Dispatchers.IO).launch {
                     setupVM.startDownload(context)
@@ -158,7 +162,7 @@ fun DownloadUi(modifier: Modifier) {
             }
         }
         if (setupVM.showDialogDownload) {
-            DialogForDownload(context, setupVM.downloadId)
+            DialogForDownload(context, setupVM.downloadId, setupVM)
         }
     }
 }
@@ -207,8 +211,11 @@ fun ChooseFile(dismiss: (confirm: FileResult) -> Unit) {
 
 
 @Composable
-fun DialogForDownload(context: Context, downloadId: Long?) {
+fun DialogForDownload(context: Context, downloadId: Long?, setupVM: SetupViewModel) {
     var downloadProgress by remember { mutableIntStateOf(0) }
+    var downloadDone by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val userStartDao = DataBaseBuilder.getDataBase(context).userStartDao()
     val intent = Intent(context, SelectData::class.java)
     val activity = context as Activity
     LaunchedEffect(downloadId) {
@@ -219,8 +226,12 @@ fun DialogForDownload(context: Context, downloadId: Long?) {
             }
         }
         if (downloadProgress >= 100) {
-            withContext(Dispatchers.IO) {
+            scope.launch (Dispatchers.IO){
                 processAfterDownload(context)
+            }.invokeOnCompletion {
+                scope.launch(Dispatchers.Main) {
+                    downloadDone = true
+                }
             }
         }
     }
@@ -236,8 +247,16 @@ fun DialogForDownload(context: Context, downloadId: Long?) {
         shape = MaterialTheme.shapes.medium,
         onDismissRequest = {},
         confirmButton = {
-            if (downloadProgress >= 100) {
+            if (downloadDone) {
                 TextButton(onClick = {
+                    val saveUserStart = UserStart(
+                        1,
+                        setupVM.userName,
+                        setupVM.userUName,
+                        setupVM.userPassword,
+                        setupVM.selectedFile
+                    )
+                    scope.launch { userStartDao.saveStart(saveUserStart) }
                     activity.startActivity(intent).also { activity.finish() }
                 }) {
                     Text(text = "Next", fontSize = 14.sp)
@@ -246,7 +265,7 @@ fun DialogForDownload(context: Context, downloadId: Long?) {
         },
         text = {
             Column {
-                if (downloadProgress < 100) {
+                if (!downloadDone) {
                     LinearProgressIndicator(
                         progress = { downloadProgress / 100f },
                         color = MaterialTheme.colorScheme.primary,

@@ -18,3 +18,13 @@ interface UserDataDao {
     @Query("SELECT * FROM userData")
     fun getAllUserData(): Flow<List<UserTable>>
 }
+
+@Dao
+interface UserStartDao{
+
+    @Upsert
+    suspend fun saveStart(userStart: UserStart)
+
+    @Query("SELECT * FROM userStart")
+    suspend fun getStart(): UserStart
+}

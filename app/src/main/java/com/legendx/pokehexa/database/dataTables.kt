@@ -16,3 +16,12 @@ data class UserTable(
     val pokeBalls: List<UserPokeBalls>,
     val totalPokemons: List<UserPokemon>,
 )
+
+@Entity(tableName = "userStart")
+data class UserStart(
+    @PrimaryKey(autoGenerate = false) val id: Int,
+    val name: String,
+    val userName: String,
+    val password: String,
+    val setupFile: Int,
+)

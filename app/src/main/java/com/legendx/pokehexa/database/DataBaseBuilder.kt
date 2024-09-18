@@ -12,7 +12,7 @@ object DataBaseBuilder {
                     context.applicationContext,
                     AppDataBase::class.java,
                     "pokehexa"
-                ).build()
+                ).fallbackToDestructiveMigration().build()
             }
         }
         return isInstanceCreated!!
