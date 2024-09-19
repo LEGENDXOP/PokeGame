@@ -1,6 +1,5 @@
 package com.legendx.pokehexa.setup.screens
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -12,17 +11,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AlternateEmail
-import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -32,6 +32,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -55,19 +58,27 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.legendx.pokehexa.PokeHexa
+import coil.compose.AsyncImage
 import com.legendx.pokehexa.database.DataBaseBuilder
+import com.legendx.pokehexa.database.UserDataDao
 import com.legendx.pokehexa.database.UserStart
+import com.legendx.pokehexa.database.UserTable
+import com.legendx.pokehexa.mainworkers.FightMode
+import com.legendx.pokehexa.mainworkers.PokeBallsCategory
+import com.legendx.pokehexa.mainworkers.UserPokeBalls
+import com.legendx.pokehexa.mainworkers.UserPokemon
 import com.legendx.pokehexa.setup.tools.DownloadHelper
 import com.legendx.pokehexa.setup.tools.FileSys
+import com.legendx.pokehexa.setup.viewmodels.SetupPokeViewModel
 import com.legendx.pokehexa.setup.viewmodels.SetupViewModel
-import com.legendx.pokehexa.tools.DataStoreManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 @Composable
 fun DownloadUi(modifier: Modifier) {
@@ -75,6 +86,8 @@ fun DownloadUi(modifier: Modifier) {
     val focus = LocalFocusManager.current
     val context = LocalContext.current
     val setupVM = viewModel<SetupViewModel>()
+    val pokeModel = viewModel<SetupPokeViewModel>()
+    val userDao = DataBaseBuilder.getDataBase(context).userDao()
 
     Column(
         modifier = modifier.fillMaxSize(),
@@ -141,11 +154,12 @@ fun DownloadUi(modifier: Modifier) {
             }
         }
         Spacer(modifier = Modifier.height(20.dp))
-        if (setupVM.userName.isNotEmpty() && setupVM.userUName.isNotEmpty() && setupVM.userPassword.isNotEmpty() && setupVM.selectedFile != 0) {
+        if (setupVM.checkDownloadAvailable()) {
             OutlinedButton(onClick = {
                 CoroutineScope(Dispatchers.IO).launch {
                     setupVM.startDownload(context)
                 }
+
             }) {
                 Text(text = "Download", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
@@ -162,11 +176,144 @@ fun DownloadUi(modifier: Modifier) {
             }
         }
         if (setupVM.showDialogDownload) {
-            DialogForDownload(context, setupVM.downloadId, setupVM)
+            DialogForDownload(context, setupVM.downloadId, setupVM) {
+                setupVM.showDialogDownload = false
+                setupVM.showDialogSelectPokemon = true
+            }
+        }
+        if (setupVM.showDialogSelectPokemon) {
+            ShowDialogSelectPoke(pokeModel, userDao) {
+                setupVM.showDialogSelectPokemon = false
+                Intent(context, FightMode::class.java).also {
+                    context.startActivity(it)
+                }
+            }
         }
     }
 }
 
+@Composable
+fun ShowDialogSelectPoke(
+    pokeModel: SetupPokeViewModel,
+    userDao: UserDataDao,
+    onFinish: () -> Unit
+) {
+    var confirm by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
+    var selectedPokemon by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        shape = MaterialTheme.shapes.extraLarge,
+        onDismissRequest = {},
+        confirmButton = {
+            if (confirm && !saving) {
+                TextButton(onClick = {
+                    saving = true
+                    scope.launch {
+                        delay(3000L)
+                        pokeModel.pokeData =
+                            pokeModel.startersPokemons.find { it.name == selectedPokemon }
+                        val pokeBall = UserPokeBalls(
+                            name = PokeBallsCategory.PokeBall,
+                            id = 1,
+                            quantity = 50,
+                        )
+
+                        val pokeMine = UserPokemon(
+                            name = pokeModel.pokeData!!.name,
+                            id = pokeModel.pokeData!!.id,
+                            level = 15,
+                            experience = 21,
+                            moves = pokeModel.pokeData!!.moves,
+                            stats = pokeModel.pokeData!!.stats,
+                            abilities = pokeModel.pokeData!!.abilities,
+                            types = pokeModel.pokeData!!.types,
+                            height = pokeModel.pokeData!!.height,
+                            weight = pokeModel.pokeData!!.weight
+                        )
+                        val pokeTable = UserTable(
+                            id = 1,
+                            name = "legendx",
+                            level = 1,
+                            experience = 1,
+                            pokeCash = 100,
+                            pokeBalls = listOf(pokeBall),
+                            totalPokemons = listOf(pokeMine)
+                        )
+                        userDao.addUserData(pokeTable)
+                    }.invokeOnCompletion {
+                        onFinish()
+                    }
+                }) {
+                    Text(text = "Next", fontSize = 14.sp)
+                }
+            }
+        },
+        title = { Text(text = "Select your Pokemon") },
+        text = {
+            if (!saving) {
+                SelectPokemon(pokeModel = pokeModel) {
+                    confirm = true
+                    selectedPokemon = it
+                }
+            } else {
+                LinearProgressIndicator()
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SelectPokemon(pokeModel: SetupPokeViewModel, onSelected: (String) -> Unit) {
+    val context = LocalContext.current
+    val pokeImages = pokeModel.getStarterPokemons(context)
+    val state = rememberCarouselState { pokeImages.count() }
+    var selectedPokemon by remember { mutableStateOf("") }
+    Column {
+        Text(
+            text = "Click to choose",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 10.dp),
+            textAlign = TextAlign.Center
+        )
+        HorizontalMultiBrowseCarousel(
+            state = state,
+            preferredItemWidth = 150.dp,
+        ) { i ->
+            val poke = pokeImages[i]
+            val imageFile = File(poke.imageID).toUri()
+            Column(horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.clickable {
+                    selectedPokemon = poke.name
+                    onSelected(poke.name)
+                }) {
+                AsyncImage(
+                    model = imageFile,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.height(150.dp)
+                )
+                Spacer(modifier = Modifier.height(5.dp))
+                Text(text = poke.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        if (selectedPokemon.isNotEmpty()) {
+            Text(
+                text = "You have chosen $selectedPokemon",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 15.dp),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
 
 @Composable
 fun ChooseFile(dismiss: (confirm: FileResult) -> Unit) {
@@ -211,13 +358,16 @@ fun ChooseFile(dismiss: (confirm: FileResult) -> Unit) {
 
 
 @Composable
-fun DialogForDownload(context: Context, downloadId: Long?, setupVM: SetupViewModel) {
+fun DialogForDownload(
+    context: Context,
+    downloadId: Long?,
+    setupVM: SetupViewModel,
+    onClick: () -> Unit
+) {
     var downloadProgress by remember { mutableIntStateOf(0) }
     var downloadDone by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val userStartDao = DataBaseBuilder.getDataBase(context).userStartDao()
-    val intent = Intent(context, SelectData::class.java)
-    val activity = context as Activity
     LaunchedEffect(downloadId) {
         downloadId?.let { id ->
             while (downloadProgress < 100) {
@@ -226,7 +376,7 @@ fun DialogForDownload(context: Context, downloadId: Long?, setupVM: SetupViewMod
             }
         }
         if (downloadProgress >= 100) {
-            scope.launch (Dispatchers.IO){
+            scope.launch(Dispatchers.IO) {
                 processAfterDownload(context)
             }.invokeOnCompletion {
                 scope.launch(Dispatchers.Main) {
@@ -257,7 +407,7 @@ fun DialogForDownload(context: Context, downloadId: Long?, setupVM: SetupViewMod
                         setupVM.selectedFile
                     )
                     scope.launch { userStartDao.saveStart(saveUserStart) }
-                    activity.startActivity(intent).also { activity.finish() }
+                    onClick()
                 }) {
                     Text(text = "Next", fontSize = 14.sp)
                 }

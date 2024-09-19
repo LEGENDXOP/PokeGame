@@ -5,7 +5,6 @@ import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.legendx.pokehexa.setup.tools.DownloadHelper
@@ -18,12 +17,17 @@ class SetupViewModel: ViewModel() {
     var showDialogFile by  mutableStateOf(false)
     var showDialogText by mutableStateOf(false)
     var showDialogDownload by mutableStateOf(false)
+    var showDialogSelectPokemon by mutableStateOf(false)
     var selectedFile by mutableIntStateOf(0)
     var userName by mutableStateOf("")
     var userUName by mutableStateOf("")
     var userPassword by mutableStateOf("")
     var downloadId by mutableStateOf<Long?>(null)
     private lateinit var urlFile: String
+
+    fun checkDownloadAvailable(): Boolean{
+        return userName.isNotEmpty() && userUName.isNotEmpty() && userPassword.isNotEmpty() && selectedFile != 0
+    }
 
     suspend fun startDownload(context: Context){
         val isZipDownload =

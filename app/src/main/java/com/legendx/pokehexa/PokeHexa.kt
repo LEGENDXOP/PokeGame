@@ -72,6 +72,3 @@ fun PokemonBattleApp() {
         )
     }
 }
-
-
-

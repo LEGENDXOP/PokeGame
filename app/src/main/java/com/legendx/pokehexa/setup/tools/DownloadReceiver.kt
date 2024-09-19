@@ -3,7 +3,6 @@ package com.legendx.pokehexa.setup.tools
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Environment
 import android.widget.Toast
 import java.io.File
 import java.io.FileInputStream

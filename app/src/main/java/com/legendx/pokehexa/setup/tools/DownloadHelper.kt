@@ -3,7 +3,6 @@ package com.legendx.pokehexa.setup.tools
 import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
-import android.os.Environment
 import android.util.Log
 
 object DownloadHelper {
