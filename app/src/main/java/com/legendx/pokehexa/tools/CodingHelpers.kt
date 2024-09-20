@@ -1,6 +1,15 @@
-package com.legendx.pokehexa.mainworkers
+package com.legendx.pokehexa.tools
 
+import android.content.Context
+import android.net.Uri
+import androidx.core.net.toUri
 import com.google.gson.Gson
+import com.legendx.pokehexa.mainworkers.DataCache
+import com.legendx.pokehexa.mainworkers.Move
+import com.legendx.pokehexa.mainworkers.PokeBallsCategory
+import com.legendx.pokehexa.mainworkers.Pokemon
+import com.legendx.pokehexa.mainworkers.UserPokeBalls
+import com.legendx.pokehexa.mainworkers.UserPokemon
 import kotlin.random.Random
 
 object CodingHelpers {
@@ -12,6 +21,11 @@ object CodingHelpers {
     fun <T> changeStringToData(data: String, clazz: Class<T>): T {
         val gson = Gson()
         return gson.fromJson(data, clazz)
+    }
+
+    fun getPokeImage(context: Context, pokeID: Int): Uri {
+        val pokeImage = context.getExternalFilesDir(null)?.absolutePath + "/images/$pokeID.png"
+        return pokeImage.toUri()
     }
 
     fun convertToUserPokemon(pokemon: Pokemon, maxLevel: Int = 10): UserPokemon {
@@ -93,6 +107,9 @@ object PokeHelpers {
     ): Boolean {
         val maxHp = enemyPokemon.stats.hp.toDouble()
         val currentHp = currentHP.toDouble()
+
+        val isPokeCanCatch = DataCache.speciesList.find { it.id == enemyPokemon.id }?.captureRate
+        if (isPokeCanCatch == null) return false
 
         // Check if Master Ball is used
         if (pokeball.name == PokeBallsCategory.MasterBall) {

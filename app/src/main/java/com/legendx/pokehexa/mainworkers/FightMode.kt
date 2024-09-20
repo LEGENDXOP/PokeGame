@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,23 +28,27 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.legendx.pokehexa.PokeHexa
 import com.legendx.pokehexa.R
 import com.legendx.pokehexa.database.DataBaseBuilder
-import com.legendx.pokehexa.database.UserDataDao
-import com.legendx.pokehexa.database.UserTable
+import com.legendx.pokehexa.mainworkers.viewmodels.FightViewModel
+import com.legendx.pokehexa.mainworkers.viewmodels.FightViewModel.GameOver
+import com.legendx.pokehexa.mainworkers.viewmodels.FightViewModelFactory
+import com.legendx.pokehexa.tools.CodingHelpers
+import com.legendx.pokehexa.tools.PokeHelpers
 import com.legendx.pokehexa.ui.theme.PokeHexaGameTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,70 +69,78 @@ class FightMode : ComponentActivity() {
         }
     }
 
-    data class GameOver(
-        val isGameOver: Boolean = false,
-        val isWin: Boolean = false,
-        val isCaptured: Boolean = false
-    )
 
     @Composable
     fun FightModeScreen(modifier: Modifier) {
         val context = LocalContext.current
-        val pokeDao = DataBaseBuilder.getDataBase(context).userDao()
         val scope = rememberCoroutineScope()
-        val pokeList by pokeDao.getAllUserData().collectAsState(initial = emptyList())
-        var isFight by remember { mutableStateOf(false) }
-        var isGameOver by remember { mutableStateOf(GameOver()) }
-        val enemyPoke = remember { DataCache.pokemonList.random() }
-        var pokeCash by remember { mutableIntStateOf(0) }
-        LaunchedEffect(pokeList) {
-            if (pokeList.isNotEmpty()) {
-                pokeCash = pokeList.first().pokeCash
+        val pokeDao = DataBaseBuilder.getDataBase(context).userDao()
+        val fightVM = viewModel<FightViewModel>(
+            factory = FightViewModelFactory(pokeDao)
+        )
+        val isFight by fightVM.isFight.collectAsStateWithLifecycle()
+        val gameOver by fightVM.gameOver.collectAsStateWithLifecycle()
+        val currentPokeBalls by fightVM.currentPokeBalls.collectAsStateWithLifecycle()
+        val isFightingProgress by fightVM.isFightingProgress.collectAsStateWithLifecycle()
+        val isCapturingProgress by fightVM.isCapturingProgress.collectAsStateWithLifecycle()
+        val myPokemons by fightVM.myPokemons.collectAsStateWithLifecycle()
+        val myPokeBalls by fightVM.myPokeBalls.collectAsStateWithLifecycle()
+
+        println(myPokemons.size)
+        if (myPokemons.size > 0) {
+            myPokemons.forEach {
+                println(it.name)
             }
         }
+        val imageFile = remember {
+            CodingHelpers.getPokeImage(context, fightVM.enemyPoke.id)
+        }
+        val imageModel = ImageRequest.Builder(context)
+            .data(imageFile)
+            .crossfade(true)
+            .build()
         Column(
             modifier = modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (!isFight) {
-                Image(
-                    painter = painterResource(R.drawable.mega_mewtwo_x), contentDescription = null,
+                AsyncImage(
+                    model = imageModel, contentDescription = null,
                     modifier = Modifier
                         .size(200.dp)
                         .padding(16.dp)
                 )
-                Text(text = enemyPoke.name, style = MaterialTheme.typography.headlineSmall)
+                Text(text = fightVM.enemyPoke.name, style = MaterialTheme.typography.headlineSmall)
                 Spacer(modifier = Modifier.height(16.dp))
-                OutlinedButton(onClick = { isFight = true }) {
+                OutlinedButton(onClick = { fightVM.setIsFight(true) }) {
                     Text(text = "Fight")
                 }
-            } else if (isGameOver.isGameOver) {
-                if (isGameOver.isWin) {
+            } else if (gameOver.isGameOver) {
+                if (gameOver.isWin) {
                     val gameText = "You Defeated the enemy you won 100 PokeCash"
-                    WinGameScreen(context, scope, pokeDao, pokeList, pokeCash, 100, gameText)
-                } else if (isGameOver.isCaptured) {
+                    WinGameScreen(context, scope, fightVM, 100, gameText)
+                } else if (gameOver.isCaptured) {
                     val gameText = "You caught the enemy Pokemon you won 200 PokeCash"
-                    WinGameScreen(context, scope, pokeDao, pokeList, pokeCash, 200, gameText)
+                    WinGameScreen(context, scope, fightVM, 200, gameText)
                 } else {
                     val gameText = "You lost the battle you will still get 50 PokeCash"
-                    WinGameScreen(context, scope, pokeDao, pokeList, pokeCash, 50, gameText)
+                    WinGameScreen(context, scope, fightVM, 50, gameText)
                 }
             } else {
-                val myPokeFirst = pokeList.first().totalPokemons.first()
+                val myPokeFirst = myPokemons.first()
                 val myPokeMoves =
                     myPokeFirst.moves.filter { it.levelLearnedAt <= myPokeFirst.level }
-                val enemyPokeFirst = remember { CodingHelpers.convertToUserPokemon(enemyPoke) }
+                val enemyPokeFirst =
+                    remember { CodingHelpers.convertToUserPokemon(fightVM.enemyPoke, 20) }
                 val enemyPokeMoves =
                     enemyPokeFirst.moves.filter { it.levelLearnedAt <= enemyPokeFirst.level }
                 val finalMovesMine = remember { myPokeMoves.shuffled().take(4) }
                 val finalMovesEnemy = remember { enemyPokeMoves.shuffled().take(4) }
                 var myPokeHp by remember { mutableIntStateOf(myPokeFirst.stats.hp) }
                 var enemyPokeHp by remember { mutableIntStateOf(enemyPokeFirst.stats.hp) }
-                val pokeBalls =
-                    remember { pokeList.first().pokeBalls.first().takeIf { it.quantity > 0 } }
-                var pokeBallCurrent by remember { mutableIntStateOf(pokeBalls?.quantity ?: 0) }
-                Image(
-                    painter = painterResource(R.drawable.mega_mewtwo_x), contentDescription = null,
+                AsyncImage(
+                    model = imageModel,
+                    contentDescription = null,
                     modifier = Modifier
                         .size(200.dp)
                         .padding(16.dp)
@@ -139,6 +150,8 @@ class FightMode : ComponentActivity() {
                 Text(text = fightDetailText, style = MaterialTheme.typography.headlineSmall)
                 Spacer(modifier = Modifier.height(16.dp))
                 BattleButtons(listOfMoves = finalMovesMine) { move ->
+                    if (isFightingProgress) return@BattleButtons
+                    fightVM.setIsFightingProgress(true)
                     PokeHelpers.calculateNewHp(
                         enemyPokeHp,
                         move,
@@ -146,12 +159,12 @@ class FightMode : ComponentActivity() {
                         enemyPokeFirst
                     ).also {
                         if (it == 0) {
-                            isGameOver = GameOver(isGameOver = true, isWin = true)
+                            fightVM.setGameOver(GameOver(isGameOver = true, isWin = true))
                         }
                         enemyPokeHp = it
                     }
                     scope.launch {
-                        delay(1000)
+                        delay(500)
                         try {
                             PokeHelpers.calculateNewHp(
                                 myPokeHp,
@@ -160,20 +173,22 @@ class FightMode : ComponentActivity() {
                                 myPokeFirst
                             ).also {
                                 if (it == 0) {
-                                    isGameOver = GameOver(isGameOver = true, isWin = false)
+                                    fightVM.setGameOver(GameOver(isGameOver = true, isWin = false))
                                 }
                                 myPokeHp = it
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
+                    }.invokeOnCompletion {
+                        fightVM.setIsFightingProgress(false)
                     }
                 }
                 Spacer(modifier = Modifier.height(50.dp))
-                Text(text = "Total Poke Balls: $pokeBallCurrent", modifier = Modifier
+                Text(text = "Total PokeBalls: $currentPokeBalls", modifier = Modifier
                     .padding(16.dp)
                     .clickable {
-                        buyPokeBallDialog(context, pokeDao, pokeList, pokeCash)
+                        buyPokeBallDialog(context, fightVM)
                     })
                 Row {
                     TextButton(onClick = {
@@ -185,22 +200,25 @@ class FightMode : ComponentActivity() {
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     TextButton(onClick = {
-                        if (pokeBallCurrent > 0) {
+                        if (currentPokeBalls > 0) {
+                            if (isCapturingProgress) return@TextButton
+                            fightVM.setIsCapturingProgress(true)
                             scope.launch {
-                                println("PokeBall: $pokeBallCurrent")
+                                delay(500)
                                 PokeHelpers.tryCatch(
                                     enemyPokeFirst,
                                     enemyPokeHp,
-                                    pokeBalls!!
+                                    myPokeBalls.first()
                                 ).also {
                                     if (it) {
-                                        isGameOver = GameOver(isGameOver = true, isCaptured = true)
+                                        fightVM.setGameOver(
+                                            GameOver(
+                                                isGameOver = true,
+                                                isCaptured = true
+                                            )
+                                        )
                                         enemyPokeFirst.baseCatchRate = null
-                                        val oldList = pokeList.first().totalPokemons.toMutableList()
-                                        oldList.add(enemyPokeFirst)
-                                        val newList = pokeList.first().copy(totalPokemons = oldList)
-                                        pokeDao.addUserData(newList)
-                                        println("Pokemon Caught")
+                                        fightVM.addPokemon(enemyPokeFirst)
                                     } else {
                                         withContext(Dispatchers.Main) {
                                             Toast.makeText(
@@ -211,14 +229,14 @@ class FightMode : ComponentActivity() {
                                         }
                                     }
                                 }
-                                pokeBallCurrent -= 1
-                                pokeDao.addUserData(
-                                    pokeList.first()
-                                        .copy(pokeBalls = listOf(pokeBalls.copy(quantity = pokeBallCurrent)))
-                                )
+                                scope.launch {
+                                    fightVM.updatePokeBalls(currentPokeBalls - 1)
+                                }
+                            }.invokeOnCompletion {
+                                fightVM.setIsCapturingProgress(false)
                             }
                         } else {
-                            buyPokeBallDialog(context, pokeDao, pokeList, pokeCash)
+                            buyPokeBallDialog(context, fightVM)
                         }
                     }) {
                         Text(text = "Catch")
@@ -249,12 +267,11 @@ class FightMode : ComponentActivity() {
     fun WinGameScreen(
         context: Context,
         scope: CoroutineScope,
-        pokeDao: UserDataDao,
-        pokeList: List<UserTable>,
-        pokeCash: Int,
+        fightVM: FightViewModel,
         amount: Int,
         text: String
     ) {
+        val pokeCash by fightVM.pokeCash.collectAsStateWithLifecycle()
         Column {
             Text(
                 text = text,
@@ -276,9 +293,8 @@ class FightMode : ComponentActivity() {
             }
             LaunchedEffect(true) {
                 scope.launch {
-                    pokeDao.addUserData(
-                        pokeList.first().copy(pokeCash = pokeList.first().pokeCash + amount)
-                    )
+                    delay(1000L)
+                    fightVM.updatePokeCash(pokeCash + amount)
                 }
             }
         }
@@ -286,47 +302,34 @@ class FightMode : ComponentActivity() {
 }
 
 fun pokeCaughtDialog(context: Context, pokemon: UserPokemon) {
-        AlertDialog.Builder(context)
-            .setTitle("Pokemon Caught")
-            .setMessage("You caught ${pokemon.name} with level ${pokemon.level}")
-            .setPositiveButton("Ok") { dialog, _ ->
-                Intent(context, PokeHexa::class.java).also {
-                    context.startActivity(it)
-                }
-                dialog.dismiss()
+    AlertDialog.Builder(context)
+        .setTitle("Pokemon Caught")
+        .setMessage("You caught ${pokemon.name} with level ${pokemon.level}")
+        .setPositiveButton("Ok") { dialog, _ ->
+            Intent(context, PokeHexa::class.java).also {
+                context.startActivity(it)
             }
-            .setIcon(R.drawable.mega_mewtwo_x)
-            .setCancelable(false)
-            .show()
+            dialog.dismiss()
+        }
+        .setIcon(R.drawable.mega_mewtwo_x)
+        .setCancelable(false)
+        .show()
 }
 
 fun buyPokeBallDialog(
     context: Context,
-    pokeDao: UserDataDao,
-    pokeList: List<UserTable>,
-    pokeCash: Int
+    fightVM: FightViewModel,
 ) {
     AlertDialog.Builder(context)
         .setTitle("Buy Poke Balls")
         .setMessage("Do you want to buy 5 PokeBalls?")
         .setPositiveButton("Yes") { dialog, _ ->
-            if (pokeCash >= 500) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    pokeDao.addUserData(
-                        pokeList.first().copy(
-                            pokeCash = pokeCash - 500,
-                            pokeBalls = listOf(
-                                pokeList.first().pokeBalls.first()
-                                    .copy(quantity = pokeList.first().pokeBalls.first().quantity + 5)
-                            )
-                        )
-                    )
-                    println("PokeBalls Bought")
+            fightVM.purchasePokeBalls(5, 100) { isPurchased ->
+                if (isPurchased) {
+                    Toast.makeText(context, "Purchased 5 PokeBalls", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Not enough PokeCash", Toast.LENGTH_SHORT).show()
                 }
-                Toast.makeText(context, "5 PokeBalls Bought", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, "Not enough PokeCash required 500", Toast.LENGTH_SHORT)
-                    .show()
             }
             dialog.dismiss()
         }
@@ -335,5 +338,4 @@ fun buyPokeBallDialog(
         }
         .setIcon(R.drawable.mega_mewtwo_x)
         .show()
-
 }

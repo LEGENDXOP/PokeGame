@@ -20,7 +20,7 @@ interface UserDataDao {
 }
 
 @Dao
-interface UserStartDao{
+interface UserStartDao {
 
     @Upsert
     suspend fun saveStart(userStart: UserStart)

@@ -1,6 +1,7 @@
 package com.legendx.pokehexa.setup.viewmodels
 
 import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -9,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.legendx.pokehexa.mainworkers.DataCache
 import com.legendx.pokehexa.mainworkers.Pokemon
+import com.legendx.pokehexa.tools.CodingHelpers
 import kotlinx.coroutines.launch
 
 class SetupPokeViewModel : ViewModel() {
@@ -30,14 +32,14 @@ class SetupPokeViewModel : ViewModel() {
 
     data class PokeItem(
         val name: String,
-        val imageID: String,
+        val imageFile: Uri,
         val contentDescription: String? = null
     )
 
-    fun getStarterPokemons(context: Context): List<PokeItem>{
+    fun getStarterPokemons(context: Context): List<PokeItem> {
         val data = startersPokemons.map {
-            val fileID = context.getExternalFilesDir(null)?.absolutePath + "/images/${it.id}.png"
-            PokeItem(it.name, imageID = fileID, contentDescription = it.name)
+            val imageFile = CodingHelpers.getPokeImage(context, it.id)
+            PokeItem(it.name, imageFile = imageFile, contentDescription = it.name)
         }
         return data
     }

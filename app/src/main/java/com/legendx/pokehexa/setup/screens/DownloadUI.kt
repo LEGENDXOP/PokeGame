@@ -32,7 +32,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
+import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,9 +58,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.legendx.pokehexa.database.DataBaseBuilder
 import com.legendx.pokehexa.database.UserDataDao
 import com.legendx.pokehexa.database.UserStart
@@ -73,18 +73,17 @@ import com.legendx.pokehexa.setup.tools.DownloadHelper
 import com.legendx.pokehexa.setup.tools.FileSys
 import com.legendx.pokehexa.setup.viewmodels.SetupPokeViewModel
 import com.legendx.pokehexa.setup.viewmodels.SetupViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 @Composable
 fun DownloadUi(modifier: Modifier) {
     val screenHeight = LocalConfiguration.current.screenHeightDp
     val focus = LocalFocusManager.current
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val setupVM = viewModel<SetupViewModel>()
     val pokeModel = viewModel<SetupPokeViewModel>()
     val userDao = DataBaseBuilder.getDataBase(context).userDao()
@@ -156,10 +155,9 @@ fun DownloadUi(modifier: Modifier) {
         Spacer(modifier = Modifier.height(20.dp))
         if (setupVM.checkDownloadAvailable()) {
             OutlinedButton(onClick = {
-                CoroutineScope(Dispatchers.IO).launch {
+                scope.launch {
                     setupVM.startDownload(context)
                 }
-
             }) {
                 Text(text = "Download", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
@@ -267,8 +265,8 @@ fun ShowDialogSelectPoke(
 @Composable
 fun SelectPokemon(pokeModel: SetupPokeViewModel, onSelected: (String) -> Unit) {
     val context = LocalContext.current
-    val pokeImages = pokeModel.getStarterPokemons(context)
-    val state = rememberCarouselState { pokeImages.count() }
+    val pokeStarters = pokeModel.getStarterPokemons(context)
+    val state = rememberCarouselState { pokeStarters.count() }
     var selectedPokemon by remember { mutableStateOf("") }
     Column {
         Text(
@@ -280,19 +278,25 @@ fun SelectPokemon(pokeModel: SetupPokeViewModel, onSelected: (String) -> Unit) {
                 .padding(bottom = 10.dp),
             textAlign = TextAlign.Center
         )
-        HorizontalMultiBrowseCarousel(
+        HorizontalUncontainedCarousel(
             state = state,
-            preferredItemWidth = 150.dp,
+            itemWidth = 150.dp,
+            itemSpacing = 10.dp,
         ) { i ->
-            val poke = pokeImages[i]
-            val imageFile = File(poke.imageID).toUri()
+            val poke = pokeStarters[i]
+            val imageModel = ImageRequest.Builder(context)
+                .data(poke.imageFile)
+                .crossfade(true)
+                .build()
             Column(horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable {
-                    selectedPokemon = poke.name
-                    onSelected(poke.name)
-                }) {
+                modifier = Modifier
+                    .maskClip(shape = MaterialTheme.shapes.small)
+                    .clickable {
+                        selectedPokemon = poke.name
+                        onSelected(poke.name)
+                    }) {
                 AsyncImage(
-                    model = imageFile,
+                    model = imageModel,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.height(150.dp)

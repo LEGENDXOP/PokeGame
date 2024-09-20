@@ -31,11 +31,6 @@
             android:label="@string/title_activity_fight_mode"
             android:theme="@style/Theme.PokeHexaGame" />
         <activity
-            android:name=".setup.screens.SelectData"
-            android:exported="false"
-            android:label="@string/title_activity_select_data"
-            android:theme="@style/Theme.PokeHexaGame" />
-        <activity
             android:name=".PokeHexa"
             android:exported="false"
             android:label="@string/title_activity_poke_hexa"

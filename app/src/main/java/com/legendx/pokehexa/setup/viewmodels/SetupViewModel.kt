@@ -13,8 +13,8 @@ import com.legendx.pokehexa.tools.DataStoreManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class SetupViewModel: ViewModel() {
-    var showDialogFile by  mutableStateOf(false)
+class SetupViewModel : ViewModel() {
+    var showDialogFile by mutableStateOf(false)
     var showDialogText by mutableStateOf(false)
     var showDialogDownload by mutableStateOf(false)
     var showDialogSelectPokemon by mutableStateOf(false)
@@ -25,11 +25,11 @@ class SetupViewModel: ViewModel() {
     var downloadId by mutableStateOf<Long?>(null)
     private lateinit var urlFile: String
 
-    fun checkDownloadAvailable(): Boolean{
+    fun checkDownloadAvailable(): Boolean {
         return userName.isNotEmpty() && userUName.isNotEmpty() && userPassword.isNotEmpty() && selectedFile != 0
     }
 
-    suspend fun startDownload(context: Context){
+    suspend fun startDownload(context: Context) {
         val isZipDownload =
             FileSys.isFileDownloaded("Resource$selectedFile.zip", context)
         val folderExist = FileSys.isFileDownloaded("images", context)
@@ -56,9 +56,9 @@ class SetupViewModel: ViewModel() {
                     }
                 }
             } else {
-                urlFile = if (selectedFile == 1){
+                urlFile = if (selectedFile == 1) {
                     "https://legendx.in/images.zip"
-                }else{
+                } else {
                     "https://legendx.in/imagesHQ.zip"
                 }
                 downloadId = DownloadHelper.downloadFile(

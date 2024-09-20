@@ -21,7 +21,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.legendx.pokehexa.mainworkers.FightMode
 import com.legendx.pokehexa.setup.FilesSetup
-import com.legendx.pokehexa.setup.screens.SelectData
 import com.legendx.pokehexa.ui.theme.PokeHexaGameTheme
 
 class PokeHexa : ComponentActivity() {
@@ -49,12 +48,7 @@ class PokeHexa : ComponentActivity() {
 fun PokemonBattleApp() {
     val context = LocalContext.current
     Column {
-        Text(text = "Hello, Pokemon!",
-            modifier = Modifier.clickable {
-                Intent(context, SelectData::class.java).run {
-                    context.startActivity(this)
-                }
-            })
+        Text(text = "Hello, Pokemon!")
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "Hello, Download!",
             modifier = Modifier.clickable {
