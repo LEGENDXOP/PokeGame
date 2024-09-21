@@ -20,7 +20,7 @@ class FightViewModel(private val userDao: UserDataDao) : ViewModel() {
     val currentPokeBalls = _currentPokeBalls.asStateFlow()
     private val _pokeCash = MutableStateFlow(0)
     val pokeCash = _pokeCash.asStateFlow()
-    private val _myPokemons = MutableStateFlow<MutableList<UserPokemon>>(mutableListOf())
+    private val _myPokemons = MutableStateFlow<List<UserPokemon>>(emptyList())
     val myPokemons = _myPokemons.asStateFlow()
     private val _myPokeBalls = MutableStateFlow<List<UserPokeBalls>>(emptyList())
     val myPokeBalls = _myPokeBalls.asStateFlow()
@@ -32,7 +32,8 @@ class FightViewModel(private val userDao: UserDataDao) : ViewModel() {
     val isCapturingProgress = _isCapturingProgress.asStateFlow()
     private val _gameOver = MutableStateFlow(GameOver())
     val gameOver = _gameOver.asStateFlow()
-    val enemyPoke = DataCache.pokemonList.random()
+    private val _enemyPoke = MutableStateFlow(DataCache.pokemonList.random())
+    val enemyPoke = _enemyPoke.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -41,7 +42,7 @@ class FightViewModel(private val userDao: UserDataDao) : ViewModel() {
                 _userData.value = user
                 user?.let {
                     _pokeCash.value = user.pokeCash
-                    _myPokemons.value.addAll(user.totalPokemons)
+                    _myPokemons.value = user.totalPokemons
                     _myPokeBalls.value = user.pokeBalls
                     _currentPokeBalls.value = user.pokeBalls.firstOrNull()?.quantity ?: 0
                 }
@@ -71,11 +72,19 @@ class FightViewModel(private val userDao: UserDataDao) : ViewModel() {
         _gameOver.value = gameOver
     }
 
+    fun resetFight() {
+        _enemyPoke.value = DataCache.pokemonList.random()
+        _isFight.value = false
+        _isFightingProgress.value = false
+        _isCapturingProgress.value = false
+        _gameOver.value = GameOver()
+    }
+
     suspend fun updatePokeCash(newPokeCash: Int) {
         _pokeCash.value = newPokeCash
         _userData.value?.let { user ->
             val updatedUser = user.copy(pokeCash = newPokeCash)
-            userDao.addUserData(updatedUser)
+            userDao.addOrUpdateData(updatedUser)
         }
     }
 
@@ -86,20 +95,22 @@ class FightViewModel(private val userDao: UserDataDao) : ViewModel() {
                 pokeBall.copy(quantity = newQuantity)
             }
             val updatedUser = user.copy(pokeBalls = updatedPokeBalls)
-            userDao.addUserData(updatedUser)
+            userDao.addOrUpdateData(updatedUser)
         }
     }
 
     suspend fun addPokemon(newPokemon: UserPokemon) {
-        val newList = _myPokemons.value
-        newList.add(newPokemon)
+        val updatedList = _myPokemons.value + newPokemon
+        _myPokemons.value = updatedList
         _userData.value?.let { user ->
-            val updatedUser = user.copy(totalPokemons = newList)
-            println("updated value: $updatedUser")
-            userDao.addUserData(updatedUser)
-            delay(1000L)
+            val updatedUser = user.copy(totalPokemons = updatedList)
+            println(updatedUser.totalPokemons)
+            repeat(3){
+                userDao.addOrUpdateData(updatedUser)
+            }
         }
     }
+
 
     fun purchasePokeBalls(quantity: Int, cost: Int, callBack: (isPurchased: Boolean) -> Unit) {
         viewModelScope.launch {
@@ -107,7 +118,6 @@ class FightViewModel(private val userDao: UserDataDao) : ViewModel() {
             if (currentCash >= cost) {
                 val newCash = currentCash - cost
                 updatePokeCash(newCash)
-                delay(1000L)
                 updatePokeBalls(_currentPokeBalls.value + quantity)
                 callBack(true)
             } else {

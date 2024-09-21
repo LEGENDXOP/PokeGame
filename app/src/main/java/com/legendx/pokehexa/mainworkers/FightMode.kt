@@ -8,8 +8,10 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -40,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.legendx.pokehexa.PokeHexa
 import com.legendx.pokehexa.R
 import com.legendx.pokehexa.database.DataBaseBuilder
@@ -50,7 +52,6 @@ import com.legendx.pokehexa.mainworkers.viewmodels.FightViewModelFactory
 import com.legendx.pokehexa.tools.CodingHelpers
 import com.legendx.pokehexa.tools.PokeHelpers
 import com.legendx.pokehexa.ui.theme.PokeHexaGameTheme
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -85,61 +86,68 @@ class FightMode : ComponentActivity() {
         val isCapturingProgress by fightVM.isCapturingProgress.collectAsStateWithLifecycle()
         val myPokemons by fightVM.myPokemons.collectAsStateWithLifecycle()
         val myPokeBalls by fightVM.myPokeBalls.collectAsStateWithLifecycle()
-
-        println(myPokemons.size)
-        if (myPokemons.size > 0) {
-            myPokemons.forEach {
-                println(it.name)
-            }
+        val enemyPoke by fightVM.enemyPoke.collectAsStateWithLifecycle()
+        println("on the start of compose total pokes are: ${myPokemons.size}")
+        val imageFile = remember(enemyPoke) {
+            CodingHelpers.getPokeImage(context, enemyPoke.id)
         }
-        val imageFile = remember {
-            CodingHelpers.getPokeImage(context, fightVM.enemyPoke.id)
-        }
-        val imageModel = ImageRequest.Builder(context)
-            .data(imageFile)
-            .crossfade(true)
-            .build()
         Column(
             modifier = modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (!isFight) {
                 AsyncImage(
-                    model = imageModel, contentDescription = null,
+                    model = imageFile, contentDescription = null,
                     modifier = Modifier
                         .size(200.dp)
                         .padding(16.dp)
                 )
-                Text(text = fightVM.enemyPoke.name, style = MaterialTheme.typography.headlineSmall)
+                Text(text = enemyPoke.name, style = MaterialTheme.typography.headlineSmall)
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedButton(onClick = { fightVM.setIsFight(true) }) {
                     Text(text = "Fight")
                 }
-            } else if (gameOver.isGameOver) {
-                if (gameOver.isWin) {
-                    val gameText = "You Defeated the enemy you won 100 PokeCash"
-                    WinGameScreen(context, scope, fightVM, 100, gameText)
-                } else if (gameOver.isCaptured) {
-                    val gameText = "You caught the enemy Pokemon you won 200 PokeCash"
-                    WinGameScreen(context, scope, fightVM, 200, gameText)
-                } else {
-                    val gameText = "You lost the battle you will still get 50 PokeCash"
-                    WinGameScreen(context, scope, fightVM, 50, gameText)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = "My Pokemons (${myPokemons.size})", style = MaterialTheme.typography.headlineSmall)
+                LazyRow {
+                  items(myPokemons.size){
+                      Box(modifier = Modifier.fillMaxWidth()
+                      ){
+                          Text(text = myPokemons[it].name, style = MaterialTheme.typography.headlineSmall)
+                      }
+                      Spacer(modifier = Modifier.width(16.dp))
+                  }
                 }
+            } else if (gameOver.isGameOver) {
+                val (gameText, amount) = when {
+                    gameOver.isWin -> "You Defeated the enemy; you won 50 PokeCash" to 50
+                    gameOver.isCaptured -> "You caught the enemy Pokémon; you won 100 PokeCash" to 100
+                    else -> "You lost the battle; you will still get 20 PokeCash" to 20
+                }
+                WinGameScreen(fightVM, amount, gameText)
             } else {
                 val myPokeFirst = myPokemons.first()
-                val myPokeMoves =
+
+                val myPokeMoves = remember(myPokeFirst) {
                     myPokeFirst.moves.filter { it.levelLearnedAt <= myPokeFirst.level }
-                val enemyPokeFirst =
-                    remember { CodingHelpers.convertToUserPokemon(fightVM.enemyPoke, 20) }
-                val enemyPokeMoves =
+                }
+
+                val enemyPokeFirst = remember(enemyPoke) {
+                    CodingHelpers.convertToUserPokemon(enemyPoke, 20)
+                }
+
+                val enemyPokeMoves = remember(enemyPokeFirst) {
                     enemyPokeFirst.moves.filter { it.levelLearnedAt <= enemyPokeFirst.level }
-                val finalMovesMine = remember { myPokeMoves.shuffled().take(4) }
-                val finalMovesEnemy = remember { enemyPokeMoves.shuffled().take(4) }
-                var myPokeHp by remember { mutableIntStateOf(myPokeFirst.stats.hp) }
-                var enemyPokeHp by remember { mutableIntStateOf(enemyPokeFirst.stats.hp) }
+                }
+
+                val finalMovesMine = remember(myPokeMoves) { myPokeMoves.shuffled().take(4) }
+                val finalMovesEnemy = remember(enemyPokeMoves) { enemyPokeMoves.shuffled().take(4) }
+
+                var myPokeHp by remember(myPokeFirst) { mutableIntStateOf(myPokeFirst.stats.hp) }
+                var enemyPokeHp by remember(enemyPokeFirst) { mutableIntStateOf(enemyPokeFirst.stats.hp) }
+
                 AsyncImage(
-                    model = imageModel,
+                    model = imageFile,
                     contentDescription = null,
                     modifier = Modifier
                         .size(200.dp)
@@ -265,8 +273,6 @@ class FightMode : ComponentActivity() {
 
     @Composable
     fun WinGameScreen(
-        context: Context,
-        scope: CoroutineScope,
         fightVM: FightViewModel,
         amount: Int,
         text: String
@@ -285,35 +291,15 @@ class FightMode : ComponentActivity() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             TextButton(onClick = {
-                Intent(context, FightMode::class.java).also {
-                    context.startActivity(it)
-                }
+                fightVM.resetFight()
             }) {
                 Text(text = "Next Pokemon")
             }
             LaunchedEffect(true) {
-                scope.launch {
-                    delay(1000L)
-                    fightVM.updatePokeCash(pokeCash + amount)
-                }
+                fightVM.updatePokeCash(pokeCash + amount)
             }
         }
     }
-}
-
-fun pokeCaughtDialog(context: Context, pokemon: UserPokemon) {
-    AlertDialog.Builder(context)
-        .setTitle("Pokemon Caught")
-        .setMessage("You caught ${pokemon.name} with level ${pokemon.level}")
-        .setPositiveButton("Ok") { dialog, _ ->
-            Intent(context, PokeHexa::class.java).also {
-                context.startActivity(it)
-            }
-            dialog.dismiss()
-        }
-        .setIcon(R.drawable.mega_mewtwo_x)
-        .setCancelable(false)
-        .show()
 }
 
 fun buyPokeBallDialog(

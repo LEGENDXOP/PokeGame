@@ -53,11 +53,11 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -71,6 +71,7 @@ import com.legendx.pokehexa.mainworkers.UserPokeBalls
 import com.legendx.pokehexa.mainworkers.UserPokemon
 import com.legendx.pokehexa.setup.tools.DownloadHelper
 import com.legendx.pokehexa.setup.tools.FileSys
+import com.legendx.pokehexa.setup.tools.ResultSignUp
 import com.legendx.pokehexa.setup.viewmodels.SetupPokeViewModel
 import com.legendx.pokehexa.setup.viewmodels.SetupViewModel
 import kotlinx.coroutines.Dispatchers
@@ -88,6 +89,15 @@ fun DownloadUi(modifier: Modifier) {
     val pokeModel = viewModel<SetupPokeViewModel>()
     val userDao = DataBaseBuilder.getDataBase(context).userDao()
 
+    val showDialogFile by setupVM.showDialogFile.collectAsStateWithLifecycle()
+    val showDialogText by setupVM.showDialogText.collectAsStateWithLifecycle()
+    val showDialogDownload by setupVM.showDialogDownload.collectAsStateWithLifecycle()
+    val showDialogSelectPokemon by setupVM.showDialogSelectPokemon.collectAsStateWithLifecycle()
+    val selectedFile by setupVM.selectedFile.collectAsStateWithLifecycle()
+    val userName by setupVM.userName.collectAsStateWithLifecycle()
+    val userUName by setupVM.userUName.collectAsStateWithLifecycle()
+    val userPassword by setupVM.userPassword.collectAsStateWithLifecycle()
+
     Column(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Top,
@@ -97,14 +107,14 @@ fun DownloadUi(modifier: Modifier) {
         Text(text = "Hello Dear User!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(50.dp))
         OutlinedTextField(
-            value = setupVM.userName, onValueChange = { setupVM.userName = it },
+            value = userName, onValueChange = { setupVM.setUserName(it) },
             label = { Text(text = "Enter your name") },
             leadingIcon = { Icon(imageVector = Icons.Default.Person, contentDescription = null) },
             keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
         )
         Spacer(modifier = Modifier.height(20.dp))
         OutlinedTextField(
-            value = setupVM.userUName, onValueChange = { setupVM.userUName = it },
+            value = userUName, onValueChange = { setupVM.setUserUName(it) },
             label = { Text(text = "Enter your username") },
             leadingIcon = {
                 Icon(
@@ -116,18 +126,17 @@ fun DownloadUi(modifier: Modifier) {
         )
         Spacer(modifier = Modifier.height(20.dp))
         OutlinedTextField(
-            value = setupVM.userPassword, onValueChange = { setupVM.userPassword = it },
+            value = userPassword, onValueChange = { setupVM.setUserPassword(it) },
             label = { Text(text = "Enter your password") },
             leadingIcon = { Icon(imageVector = Icons.Default.Password, contentDescription = null) },
             keyboardOptions = KeyboardOptions.Default.copy(
                 imeAction = ImeAction.Done,
-                keyboardType = KeyboardType.Number
             ),
             keyboardActions = KeyboardActions(onDone = { focus.clearFocus() })
         )
         Spacer(modifier = Modifier.height(20.dp))
-        if (setupVM.selectedFile == 0) {
-            OutlinedButton(onClick = { setupVM.showDialogText = true }) {
+        if (selectedFile == 0) {
+            OutlinedButton(onClick = { setupVM.setDialogText(true) }) {
                 Text(
                     text = "Details About Resource",
                     fontSize = 14.sp,
@@ -135,25 +144,25 @@ fun DownloadUi(modifier: Modifier) {
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
-            OutlinedButton(onClick = { setupVM.showDialogFile = true }) {
+            OutlinedButton(onClick = { setupVM.setDialogFile(true) }) {
                 Text(text = "Choose Resource", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Selected File: ", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 Text(
-                    text = "Resource ${setupVM.selectedFile}",
+                    text = "Resource $selectedFile",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.width(10.dp))
-                IconButton(onClick = { setupVM.selectedFile = 0 }) {
+                IconButton(onClick = { setupVM.setSelectedFile(0) }) {
                     Icon(imageVector = Icons.Default.Delete, contentDescription = null)
                 }
             }
         }
         Spacer(modifier = Modifier.height(20.dp))
-        if (setupVM.checkDownloadAvailable()) {
+        if (setupVM.checkDownloadAvailable() is ResultSignUp.Success) {
             OutlinedButton(onClick = {
                 scope.launch {
                     setupVM.startDownload(context)
@@ -162,26 +171,26 @@ fun DownloadUi(modifier: Modifier) {
                 Text(text = "Download", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         }
-        if (setupVM.showDialogText) {
-            DialogForDetails { setupVM.showDialogText = false }
+        if (showDialogText) {
+            DialogForDetails { setupVM.setDialogText(false) }
         }
-        if (setupVM.showDialogFile) {
+        if (showDialogFile) {
             ChooseFile { confirm ->
-                setupVM.showDialogFile = false
+                setupVM.setDialogFile(false)
                 if (confirm.isConfirmed) {
-                    setupVM.selectedFile = confirm.selectedFile
+                    setupVM.setSelectedFile(confirm.selectedFile)
                 }
             }
         }
-        if (setupVM.showDialogDownload) {
-            DialogForDownload(context, setupVM.downloadId, setupVM) {
-                setupVM.showDialogDownload = false
-                setupVM.showDialogSelectPokemon = true
+        if (showDialogDownload) {
+            DialogForDownload(context, setupVM) {
+               setupVM.setDialogDownload(false)
+                setupVM.setDialogSelectPokemon(true)
             }
         }
-        if (setupVM.showDialogSelectPokemon) {
+        if (showDialogSelectPokemon) {
             ShowDialogSelectPoke(pokeModel, userDao) {
-                setupVM.showDialogSelectPokemon = false
+                setupVM.setDialogSelectPokemon(false)
                 Intent(context, FightMode::class.java).also {
                     context.startActivity(it)
                 }
@@ -238,7 +247,7 @@ fun ShowDialogSelectPoke(
                             pokeBalls = listOf(pokeBall),
                             totalPokemons = listOf(pokeMine)
                         )
-                        userDao.addUserData(pokeTable)
+                        userDao.addOrUpdateData(pokeTable)
                     }.invokeOnCompletion {
                         onFinish()
                     }
@@ -247,7 +256,9 @@ fun ShowDialogSelectPoke(
                 }
             }
         },
-        title = { Text(text = "Select your Pokemon") },
+        title = {
+            Text(text = if (saving) "Saving..." else "Choose Your Pokemon", fontSize = 16.sp)
+        },
         text = {
             if (!saving) {
                 SelectPokemon(pokeModel = pokeModel) {
@@ -280,7 +291,7 @@ fun SelectPokemon(pokeModel: SetupPokeViewModel, onSelected: (String) -> Unit) {
         )
         HorizontalUncontainedCarousel(
             state = state,
-            itemWidth = 150.dp,
+            itemWidth = 170.dp,
             itemSpacing = 10.dp,
         ) { i ->
             val poke = pokeStarters[i]
@@ -291,6 +302,7 @@ fun SelectPokemon(pokeModel: SetupPokeViewModel, onSelected: (String) -> Unit) {
             Column(horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .maskClip(shape = MaterialTheme.shapes.small)
+                    .padding(5.dp)
                     .clickable {
                         selectedPokemon = poke.name
                         onSelected(poke.name)
@@ -299,7 +311,7 @@ fun SelectPokemon(pokeModel: SetupPokeViewModel, onSelected: (String) -> Unit) {
                     model = imageModel,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.height(150.dp)
+                    modifier = Modifier.height(170.dp)
                 )
                 Spacer(modifier = Modifier.height(5.dp))
                 Text(text = poke.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -364,12 +376,16 @@ fun ChooseFile(dismiss: (confirm: FileResult) -> Unit) {
 @Composable
 fun DialogForDownload(
     context: Context,
-    downloadId: Long?,
     setupVM: SetupViewModel,
     onClick: () -> Unit
 ) {
     var downloadProgress by remember { mutableIntStateOf(0) }
     var downloadDone by remember { mutableStateOf(false) }
+    val downloadId by setupVM.downloadId.collectAsStateWithLifecycle()
+    val userName by setupVM.userName.collectAsStateWithLifecycle()
+    val userUName by setupVM.userUName.collectAsStateWithLifecycle()
+    val userPassword by setupVM.userPassword.collectAsStateWithLifecycle()
+    val selectedFile by setupVM.selectedFile.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val userStartDao = DataBaseBuilder.getDataBase(context).userStartDao()
     LaunchedEffect(downloadId) {
@@ -405,10 +421,10 @@ fun DialogForDownload(
                 TextButton(onClick = {
                     val saveUserStart = UserStart(
                         1,
-                        setupVM.userName,
-                        setupVM.userUName,
-                        setupVM.userPassword,
-                        setupVM.selectedFile
+                        userName,
+                        userUName,
+                        userPassword,
+                        selectedFile
                     )
                     scope.launch { userStartDao.saveStart(saveUserStart) }
                     onClick()

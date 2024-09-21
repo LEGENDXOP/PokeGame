@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Query
 import androidx.room.Upsert
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -11,6 +12,12 @@ interface UserDataDao {
 
     @Upsert
     suspend fun addUserData(userData: UserTable)
+
+    suspend fun addOrUpdateData(userData: UserTable) {
+        println("Adding user data")
+        addUserData(userData)
+        delay(1000L)
+    }
 
     @Delete
     suspend fun deleteUserData(userData: UserTable)
