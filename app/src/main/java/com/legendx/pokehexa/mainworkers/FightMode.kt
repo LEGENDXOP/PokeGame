@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -38,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,8 +65,17 @@ class FightMode : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PokeHexaGameTheme {
+                val configuration = LocalConfiguration.current
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    FightModeScreen(modifier = Modifier.padding(innerPadding))
+                    val myModifier = Modifier
+                        .padding(innerPadding)
+                        .let {
+                            if (configuration.screenWidthDp > 600) {
+                                it.verticalScroll(rememberScrollState())
+                            }
+                            it
+                        }
+                    FightModeScreen(myModifier)
                 }
             }
         }
@@ -108,15 +119,22 @@ class FightMode : ComponentActivity() {
                     Text(text = "Fight")
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(text = "My Pokemons (${myPokemons.size})", style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    text = "My Pokemons (${myPokemons.size})",
+                    style = MaterialTheme.typography.headlineSmall
+                )
                 LazyRow {
-                  items(myPokemons.size){
-                      Box(modifier = Modifier.fillMaxWidth()
-                      ){
-                          Text(text = myPokemons[it].name, style = MaterialTheme.typography.headlineSmall)
-                      }
-                      Spacer(modifier = Modifier.width(16.dp))
-                  }
+                    items(myPokemons.size) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = myPokemons[it].name,
+                                style = MaterialTheme.typography.headlineSmall
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                    }
                 }
             } else if (gameOver.isGameOver) {
                 val (gameText, amount) = when {

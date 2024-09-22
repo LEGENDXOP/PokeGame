@@ -39,8 +39,8 @@ class FightViewModel(private val userDao: UserDataDao) : ViewModel() {
         viewModelScope.launch {
             userDao.getAllUserData().collect { users ->
                 val user = users.firstOrNull()
-                _userData.value = user
                 user?.let {
+                    _userData.value = user
                     _pokeCash.value = user.pokeCash
                     _myPokemons.value = user.totalPokemons
                     _myPokeBalls.value = user.pokeBalls

@@ -225,7 +225,6 @@ fun ShowDialogSelectPoke(
                             id = 1,
                             quantity = 50,
                         )
-
                         val pokeMine = UserPokemon(
                             name = pokeModel.pokeData!!.name,
                             id = pokeModel.pokeData!!.id,

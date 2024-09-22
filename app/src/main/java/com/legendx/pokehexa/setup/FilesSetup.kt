@@ -18,10 +18,13 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.legendx.pokehexa.setup.screens.DownloadUi
@@ -43,7 +46,16 @@ class FilesSetup : ComponentActivity() {
                     }
                 }
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    DownloadUi(modifier = Modifier.padding(innerPadding))
+                    val configuration = LocalConfiguration.current
+                    val myModifier = Modifier
+                        .padding(innerPadding)
+                        .let {
+                            if (configuration.screenWidthDp > 600) {
+                                it.verticalScroll(rememberScrollState())
+                            }
+                            it
+                        }
+                    DownloadUi(modifier = myModifier)
                 }
                 RequestPermissionsFile(context, permissionLauncher)
             }
