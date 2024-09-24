@@ -53,6 +53,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -130,6 +131,7 @@ fun DownloadUi(modifier: Modifier) {
             label = { Text(text = "Enter your password") },
             leadingIcon = { Icon(imageVector = Icons.Default.Password, contentDescription = null) },
             keyboardOptions = KeyboardOptions.Default.copy(
+                keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done,
             ),
             keyboardActions = KeyboardActions(onDone = { focus.clearFocus() })

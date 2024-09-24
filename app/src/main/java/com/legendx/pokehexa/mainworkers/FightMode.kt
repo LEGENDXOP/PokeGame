@@ -2,12 +2,12 @@ package com.legendx.pokehexa.mainworkers
 
 import android.app.AlertDialog
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -39,13 +40,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.legendx.pokehexa.PokeHexa
 import com.legendx.pokehexa.R
 import com.legendx.pokehexa.database.DataBaseBuilder
 import com.legendx.pokehexa.mainworkers.viewmodels.FightViewModel
@@ -65,17 +68,8 @@ class FightMode : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PokeHexaGameTheme {
-                val configuration = LocalConfiguration.current
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    val myModifier = Modifier
-                        .padding(innerPadding)
-                        .let {
-                            if (configuration.screenWidthDp > 600) {
-                                it.verticalScroll(rememberScrollState())
-                            }
-                            it
-                        }
-                    FightModeScreen(myModifier)
+                    FightModeScreen(Modifier.padding(innerPadding))
                 }
             }
         }
@@ -85,6 +79,7 @@ class FightMode : ComponentActivity() {
     @Composable
     fun FightModeScreen(modifier: Modifier) {
         val context = LocalContext.current
+        val screenWidth = LocalConfiguration.current.screenWidthDp
         val scope = rememberCoroutineScope()
         val pokeDao = DataBaseBuilder.getDataBase(context).userDao()
         val fightVM = viewModel<FightViewModel>(
@@ -98,17 +93,24 @@ class FightMode : ComponentActivity() {
         val myPokemons by fightVM.myPokemons.collectAsStateWithLifecycle()
         val myPokeBalls by fightVM.myPokeBalls.collectAsStateWithLifecycle()
         val enemyPoke by fightVM.enemyPoke.collectAsStateWithLifecycle()
-        println("on the start of compose total pokes are: ${myPokemons.size}")
-        val imageFile = remember(enemyPoke) {
+        val enemyPokeImage = remember(enemyPoke) {
             CodingHelpers.getPokeImage(context, enemyPoke.id)
         }
+        val myModifier = modifier.then(
+            if (screenWidth > 600) {
+                modifier.verticalScroll(rememberScrollState())
+            } else {
+                modifier
+            }
+        )
+        println("on the start of compose total pokes are: ${myPokemons.size}")
         Column(
-            modifier = modifier.fillMaxSize(),
+            modifier = myModifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (!isFight) {
                 AsyncImage(
-                    model = imageFile, contentDescription = null,
+                    model = enemyPokeImage, contentDescription = null,
                     modifier = Modifier
                         .size(200.dp)
                         .padding(16.dp)
@@ -149,6 +151,9 @@ class FightMode : ComponentActivity() {
                 val myPokeMoves = remember(myPokeFirst) {
                     myPokeFirst.moves.filter { it.levelLearnedAt <= myPokeFirst.level }
                 }
+                val myPokeImage = remember(myPokeFirst) {
+                    CodingHelpers.getPokeImage(context, myPokeFirst.id)
+                }
 
                 val enemyPokeFirst = remember(enemyPoke) {
                     CodingHelpers.convertToUserPokemon(enemyPoke, 20)
@@ -164,16 +169,50 @@ class FightMode : ComponentActivity() {
                 var myPokeHp by remember(myPokeFirst) { mutableIntStateOf(myPokeFirst.stats.hp) }
                 var enemyPokeHp by remember(enemyPokeFirst) { mutableIntStateOf(enemyPokeFirst.stats.hp) }
 
-                AsyncImage(
-                    model = imageFile,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(200.dp)
-                        .padding(16.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    AsyncImage(
+                        model = myPokeImage,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(200.dp)
+                            .padding(16.dp)
+                            .scale(scaleX = -1f, scaleY = 1f)
+                    )
+                    Image(
+                        painter = painterResource(R.drawable.versus_icon),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(30.dp)
+                            .alpha(0.8f)
+                    )
+                    AsyncImage(
+                        model = enemyPokeImage,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(200.dp)
+                            .padding(16.dp)
+                    )
+                }
                 val fightDetailText =
-                    "${myPokeFirst.name} (${myPokeFirst.level}) vs ${enemyPokeFirst.name} (${enemyPokeFirst.level})\n\n${myPokeFirst.name} has $myPokeHp HP\n${enemyPokeFirst.name} has $enemyPokeHp HP"
+                    "${myPokeFirst.name} (${myPokeFirst.level}) vs ${enemyPokeFirst.name} (${enemyPokeFirst.level})"
                 Text(text = fightDetailText, style = MaterialTheme.typography.headlineSmall)
+                ShowPokeHp(
+                    pokeName = myPokeFirst.name,
+                    currentHp = myPokeHp,
+                    totalHp = myPokeFirst.stats.hp,
+                    modifier = Modifier.padding(16.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                ShowPokeHp(
+                    pokeName = enemyPokeFirst.name,
+                    currentHp = enemyPokeHp,
+                    totalHp = enemyPokeFirst.stats.hp,
+                    modifier = Modifier.padding(16.dp)
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 BattleButtons(listOfMoves = finalMovesMine) { move ->
                     if (isFightingProgress) return@BattleButtons
@@ -218,9 +257,7 @@ class FightMode : ComponentActivity() {
                     })
                 Row {
                     TextButton(onClick = {
-                        Intent(context, PokeHexa::class.java).also {
-                            context.startActivity(it)
-                        }
+                        fightVM.resetFight()
                     }) {
                         Text(text = "Run Away")
                     }
@@ -272,6 +309,29 @@ class FightMode : ComponentActivity() {
         }
     }
 
+
+    @Composable
+    fun ShowPokeHp(
+        pokeName: String,
+        currentHp: Int,
+        totalHp: Int,
+        modifier: Modifier
+    ) {
+        Column {
+            Text(
+                text = "Pokemon: $pokeName HP: $currentHp/$totalHp",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = modifier
+            )
+            LinearProgressIndicator(
+                progress = { currentHp.toFloat() / totalHp },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .size(6.dp)
+            )
+        }
+    }
 
     @OptIn(ExperimentalLayoutApi::class)
     @Composable

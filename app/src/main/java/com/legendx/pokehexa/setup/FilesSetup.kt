@@ -46,16 +46,7 @@ class FilesSetup : ComponentActivity() {
                     }
                 }
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    val configuration = LocalConfiguration.current
-                    val myModifier = Modifier
-                        .padding(innerPadding)
-                        .let {
-                            if (configuration.screenWidthDp > 600) {
-                                it.verticalScroll(rememberScrollState())
-                            }
-                            it
-                        }
-                    DownloadUi(modifier = myModifier)
+                    DownloadUi(modifier = Modifier.padding(innerPadding))
                 }
                 RequestPermissionsFile(context, permissionLauncher)
             }
