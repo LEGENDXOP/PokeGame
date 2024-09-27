@@ -34,6 +34,12 @@ class FightViewModel(private val userDao: UserDataDao) : ViewModel() {
     val gameOver = _gameOver.asStateFlow()
     private val _enemyPoke = MutableStateFlow(DataCache.pokemonList.random())
     val enemyPoke = _enemyPoke.asStateFlow()
+    private val _myPokemon = MutableStateFlow<UserPokemon?>(null)
+    val myPokemon = _myPokemon.asStateFlow()
+    private val _myPokemonHp = MutableStateFlow(0)
+    val myPokemonHp = _myPokemonHp.asStateFlow()
+    private val _enemyPokemonHp = MutableStateFlow(0)
+    val enemyPokemonHp = _enemyPokemonHp.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -72,11 +78,26 @@ class FightViewModel(private val userDao: UserDataDao) : ViewModel() {
         _gameOver.value = gameOver
     }
 
+    fun setMyPokemon(pokemon: UserPokemon) {
+        _myPokemon.value = pokemon
+    }
+
+    fun setMyPokemonHp(hp: Int) {
+        _myPokemonHp.value = hp
+    }
+
+    fun setEnemyPokemonHp(hp: Int) {
+        _enemyPokemonHp.value = hp
+    }
+
     fun resetFight() {
         _enemyPoke.value = DataCache.pokemonList.random()
         _isFight.value = false
         _isFightingProgress.value = false
         _isCapturingProgress.value = false
+        _myPokemon.value = null
+        _myPokemonHp.value = 0
+        _enemyPokemonHp.value = 0
         _gameOver.value = GameOver()
     }
 
