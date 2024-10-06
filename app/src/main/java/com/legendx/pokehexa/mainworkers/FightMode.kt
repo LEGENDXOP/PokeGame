@@ -3,6 +3,8 @@ package com.legendx.pokehexa.mainworkers
 import android.app.AlertDialog
 import android.content.Context
 import android.os.Bundle
+import android.view.HapticFeedbackConstants
+import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -60,6 +62,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -102,6 +105,7 @@ class FightMode : ComponentActivity() {
     fun FightModeScreen(modifier: Modifier) {
         val context = LocalContext.current
         val haptics = LocalHapticFeedback.current
+        val view = LocalView.current
         val screenWidth = LocalConfiguration.current.screenWidthDp
         val scope = rememberCoroutineScope()
         val pokeDao = DataBaseBuilder.getDataBase(context).userDao()
@@ -211,7 +215,10 @@ class FightMode : ComponentActivity() {
                             .size(150.dp)
                             .scale(scaleX = -1f, scaleY = 1f)
                             .combinedClickable(
-                                onClick = { chooseMyPokemon = true },
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                    chooseMyPokemon = true
+                                },
                                 onLongClick = {
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                     showPokeDetails = myPokeFirst
