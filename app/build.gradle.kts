@@ -1,7 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    alias(libs.plugins.compose.compiler)
     id("com.google.devtools.ksp")
+    kotlin("plugin.serialization")
 }
 
 android {
@@ -51,6 +53,11 @@ android {
 }
 
 dependencies {
+    implementation(libs.ktor.client.negotiation)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.ktor.client.kotlinx.serialization)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.engine)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.runtime)
