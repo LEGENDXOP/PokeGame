@@ -11,6 +11,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.legendx.pokehexa.learning.TestingActivity
 import com.legendx.pokehexa.mainworkers.FightMode
 import com.legendx.pokehexa.tools.DataStoreManager
 import com.legendx.pokehexa.ui.theme.PokeHexaGameTheme
@@ -27,7 +28,7 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(true) {
                         val isSetupDone = DataStoreManager.getSetup(context)
                         if (!isSetupDone) {
-                            val intent = Intent(context, PokeHexa::class.java)
+                            val intent = Intent(context, TestingActivity::class.java)
                             val activity = (context as Activity)
                             activity.startActivity(intent)
                             activity.finish()

@@ -26,6 +26,11 @@
         android:theme="@style/Theme.PokeHexaGame"
         tools:targetApi="31">
         <activity
+            android:name=".learning.TestingActivity"
+            android:exported="false"
+            android:label="@string/title_activity_testing"
+            android:theme="@style/Theme.PokeHexaGame" />
+        <activity
             android:name=".mainworkers.FightMode"
             android:exported="false"
             android:label="@string/title_activity_fight_mode"

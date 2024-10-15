@@ -53,6 +53,10 @@ android {
 }
 
 dependencies {
+    val koin_version = "3.4.2"
+    implementation("io.insert-koin:koin-core:$koin_version")
+    implementation("io.insert-koin:koin-android:$koin_version")
+    implementation("io.insert-koin:koin-androidx-compose:$koin_version")
     implementation(libs.ktor.client.negotiation)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.ktor.client.kotlinx.serialization)
