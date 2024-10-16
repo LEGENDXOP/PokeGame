@@ -1,6 +1,7 @@
 package com.legendx.pokehexa.learning
 
 import android.os.Bundle
+import android.util.Log
 import android.util.Patterns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -135,7 +136,8 @@ fun TestingScreen() {
             OutlinedButton(
                 onClick = {
                     myViewModel.onAction(RegisterActions.OnRegister)
-                }
+                },
+                enabled = registerState.canRegister
             ) {
                 Text(text = "Register")
             }
@@ -175,6 +177,16 @@ class EmailValidator : PatternValidator {
     }
 }
 
+data class PasswordValidationState(
+    val hasMinLength: Boolean = false,
+    val hasUpperCase: Boolean = false,
+    val hasLowerCase: Boolean = false,
+    val hasNumber: Boolean = false,
+) {
+    val isPasswordValid: Boolean
+        get() = hasMinLength && hasUpperCase && hasLowerCase && hasNumber
+}
+
 class UserValidator(
     private val emailValidator: PatternValidator
 ) {
@@ -203,22 +215,12 @@ data class RegisterState(
     val isPasswordVisible: Boolean = false,
     val passwordValidationState: PasswordValidationState = PasswordValidationState(),
     val isRegistering: Boolean = false,
-    val canRegister: Boolean = PasswordValidationState().isPasswordValid,
+    val canRegister: Boolean = false,
 )
 
 sealed interface RegisterActions {
     data object OnRegister : RegisterActions
     data object OnBack : RegisterActions
-}
-
-data class PasswordValidationState(
-    val hasMinLength: Boolean = false,
-    val hasUpperCase: Boolean = false,
-    val hasLowerCase: Boolean = false,
-    val hasNumber: Boolean = false,
-) {
-    val isPasswordValid: Boolean
-        get() = hasMinLength && hasUpperCase && hasLowerCase && hasNumber
 }
 
 class MyViewModel(
@@ -231,12 +233,11 @@ class MyViewModel(
         viewModelScope.launch {
             _registerState.collectLatest { state ->
                 val isValidEmail = userValidator.isValidEmail(state.email)
-                _registerState.value = state.copy(
-                    isValidEmail = isValidEmail,
-                )
                 val passwordValidationState = userValidator.isValidPassword(state.password)
                 _registerState.value = state.copy(
+                    isValidEmail = isValidEmail,
                     passwordValidationState = passwordValidationState,
+                    canRegister = isValidEmail && passwordValidationState.isPasswordValid
                 )
             }
         }
