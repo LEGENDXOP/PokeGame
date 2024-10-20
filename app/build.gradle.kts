@@ -53,6 +53,7 @@ android {
 }
 
 dependencies {
+    implementation("com.github.LEGENDXOP:ComposerPro:1.0.0")
     val koin_version = "3.4.2"
     implementation("io.insert-koin:koin-core:$koin_version")
     implementation("io.insert-koin:koin-android:$koin_version")

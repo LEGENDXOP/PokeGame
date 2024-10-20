@@ -49,7 +49,7 @@ class TestingActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PokeHexaGameTheme {
-                TestingScreen()
+                TestTwoScreen()
             }
         }
     }

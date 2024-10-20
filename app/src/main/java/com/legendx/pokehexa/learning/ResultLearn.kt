@@ -6,6 +6,8 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.request.url
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
@@ -48,6 +50,18 @@ interface Errors
 sealed interface Result<out D, out E: Errors> {
     data class Success<out D> (val data: D): Result<D, Nothing>
     data class Error<out E: Errors> (val error: Errors): Result<Nothing, E>
+}
+
+suspend inline fun <reified Request, reified Response> HttpClient.post(
+    url: String,
+    body: Request
+):Result<Response, TotalErrors>{
+    return safeCall {
+        post {
+            url(url)
+            setBody(body)
+        }
+    }
 }
 
 suspend inline fun <reified Response> HttpClient.get(
